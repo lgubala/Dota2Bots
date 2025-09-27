@@ -163,15 +163,11 @@ function ConsiderIlluminate()
     end
 
     local nRadius = illuminate:GetSpecialValueInt("radius");
-    local nCastRange = illuminate:GetCastRange();
+    local nCastRange = math.min(illuminate:GetCastRange(), 1600);  -- RANGE FIX
     local nCastPoint = illuminate:GetCastPoint();
-    
-    if nCastRange > 1600 then
-        nCastRange = 1600;
-    end
 
     -- Interrupt channeling enemies (highest priority)
-    local enemies = npcBot:GetNearbyHeroes(nCastRange + 200, true, BOT_MODE_NONE);
+    local enemies = npcBot:GetNearbyHeroes(math.min(nCastRange + 200, 1600), true, BOT_MODE_NONE);  -- RANGE FIX
     for _, enemy in pairs(enemies) do
         if mutil.SafeIsChanneling(enemy) and mutil.CanCastOnNonMagicImmune(enemy) then
             return BOT_ACTION_DESIRE_HIGH, enemy:GetLocation();
@@ -218,12 +214,12 @@ function ConsiderBlindingLight()
     end
 
     local nRadius = abilityW:GetSpecialValueInt("radius");
-    local nCastRange = abilityW:GetCastRange();
+    local nCastRange = math.min(abilityW:GetCastRange(), 1600);  -- RANGE FIX
     local nCastPoint = abilityW:GetCastPoint();
 
     -- Escape usage (highest priority)
     if mutil.IsRetreating(npcBot) then
-        local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes(nRadius + 200, true, BOT_MODE_NONE);
+        local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes(math.min(nRadius + 200, 1600), true, BOT_MODE_NONE);  -- RANGE FIX
         for _, npcEnemy in pairs(tableNearbyEnemyHeroes) do
             if npcBot:WasRecentlyDamagedByHero(npcEnemy, 2.0) then
                 -- Knock them back from our current position
@@ -261,7 +257,7 @@ function ConsiderChakraMagic()
         return BOT_ACTION_DESIRE_NONE, nil;
     end
     
-    local nCastRange = abilityE:GetCastRange();
+    local nCastRange = math.min(abilityE:GetCastRange(), 1600);  -- RANGE FIX
     local currentManaPercent = npcBot:GetMana() / npcBot:GetMaxMana();
     
     -- Prioritize self when low on mana (30% more effective on self)
@@ -296,7 +292,7 @@ function ConsiderRadiantBind()
         return BOT_ACTION_DESIRE_NONE, nil;
     end
     
-    local nCastRange = abilityRadiantBind:GetCastRange();
+    local nCastRange = math.min(abilityRadiantBind:GetCastRange(), 1600);  -- RANGE FIX
     local hasShard = npcBot:HasModifier("modifier_item_aghanims_shard");
     
     -- Clean up old targets from tracking
@@ -389,16 +385,12 @@ function ConsiderWillOWisp()
     end
 
     local nRadius = abilityWillOWisp:GetSpecialValueInt("radius");
-    local nCastRange = abilityWillOWisp:GetCastRange();
+    local nCastRange = math.min(abilityWillOWisp:GetCastRange(), 1300);  -- RANGE FIX
     local nCastPoint = abilityWillOWisp:GetCastPoint();
-    
-    if nCastRange > 1300 then
-        nCastRange = 1300;
-    end
 
     -- Escape usage
     if mutil.IsRetreating(npcBot) then
-        local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes(nRadius + 200, true, BOT_MODE_NONE);
+        local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes(math.min(nRadius + 200, 1600), true, BOT_MODE_NONE);  -- RANGE FIX
         for _, npcEnemy in pairs(tableNearbyEnemyHeroes) do
             if npcBot:WasRecentlyDamagedByHero(npcEnemy, 2.0) and mutil.CanCastOnNonMagicImmune(npcEnemy) then
                 return BOT_ACTION_DESIRE_HIGH, npcBot:GetLocation();
