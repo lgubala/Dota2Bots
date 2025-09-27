@@ -1,330 +1,314 @@
-if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion()  then
-	return;
+if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion() then
+    return;
 end
 
 local ability_item_usage_generic = dofile( GetScriptDirectory().."/ability_item_usage_generic" )
 local utils = require(GetScriptDirectory() ..  "/util")
-local mutil = require(GetScriptDirectory() ..  "/MyUtility")
+local mutils = require(GetScriptDirectory() ..  "/MyUtility")
 
 function AbilityLevelUpThink()  
-	ability_item_usage_generic.AbilityLevelUpThink(); 
+    ability_item_usage_generic.AbilityLevelUpThink(); 
 end
 function BuybackUsageThink()
-	ability_item_usage_generic.BuybackUsageThink();
+    ability_item_usage_generic.BuybackUsageThink();
 end
 function CourierUsageThink()
-	ability_item_usage_generic.CourierUsageThink();
+    ability_item_usage_generic.CourierUsageThink();
 end
 function ItemUsageThink()
-	ability_item_usage_generic.ItemUsageThink();
+    ability_item_usage_generic.ItemUsageThink();
 end
 
-local castDPDesire = 0;
-local castPCDesire = 0;
-local castPC2Desire = 0;
-local castSDDesire = 0;
+local bot = GetBot();
 
-local abilityDP = nil;
-local abilityPC = nil;
-local abilityPC2 = nil;
-local abilitySD = nil;
+-- Ability references
+local abilitySwitch = nil; -- Switch Stance
+local abilityAxesRanged = nil; -- Whirling Axes Ranged
+local abilityAxesMelee = nil; -- Whirling Axes Melee
+local abilityUltimate = nil; -- Battle Trance
 
-local npcBot = nil;
-local toggleTime = DotaTime();
+-- State tracking
+local lastSwitchTime = 0;
+local switchCooldown = 0.3; -- Prevent spam switching
+
+-- Desire values
+local castSwitchDesire = 0;
+local castRangedDesire = 0;
+local castMeleeDesire = 0;
+local castUltDesire = 0;
 
 function AbilityUsageThink()
+    
+    if mutils.CanNotUseAbility(bot) then return end
+    
+    -- CHANNELING PROTECTION
+    if mutils.SafeIsChanneling(bot) then
+        return;
+    end
 
-	if npcBot == nil then npcBot = GetBot(); end
-	
-	-- Check if we're already using an ability
-	if mutil.CanNotUseAbility(npcBot) then return end
+    -- Initialize abilities by name
+    if abilitySwitch == nil then abilitySwitch = bot:GetAbilityByName("troll_warlord_switch_stance"); end
+    if abilityAxesRanged == nil then abilityAxesRanged = bot:GetAbilityByName("troll_warlord_whirling_axes_ranged"); end
+    if abilityAxesMelee == nil then abilityAxesMelee = bot:GetAbilityByName("troll_warlord_whirling_axes_melee"); end
+    if abilityUltimate == nil then abilityUltimate = bot:GetAbilityByName("troll_warlord_battle_trance"); end
 
-	if abilityDP == nil then abilityDP = npcBot:GetAbilityByName( "troll_warlord_berserkers_rage" ) end
-	if abilityPC == nil then abilityPC = npcBot:GetAbilityByName( "troll_warlord_whirling_axes_melee" ) end
-	if abilityPC2 == nil then abilityPC2 = npcBot:GetAbilityByName( "troll_warlord_whirling_axes_ranged" ) end
-	if abilitySD == nil then abilitySD = npcBot:GetAbilityByName( "troll_warlord_battle_trance" ) end
+    -- Consider using each ability
+    castUltDesire = ConsiderBattleTrance();
+    castRangedDesire, castRangedTarget = ConsiderWhirlingAxesRanged();
+    castMeleeDesire = ConsiderWhirlingAxesMelee();
+    castSwitchDesire = ConsiderSwitchStance();
 
-	-- Consider using each ability
-	castDPDesire = ConsiderDarkPact();
-	castPCDesire = ConsiderPounce();
-	castPC2Desire, castPC2Location = ConsiderPounce2();
-	castSDDesire = ConsiderShadowDance();
-	
-	if ( castDPDesire > 0 ) 
-	then
-		toggleTime = DotaTime();
-		npcBot:Action_UseAbility( abilityDP );
-		return;
-	end
-	
-	if ( castPCDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilityPC );
-		return;
-	end
-	
-	if ( castPC2Desire > 0 ) 
-	then
-		npcBot:Action_UseAbilityOnLocation( abilityPC2, castPC2Location );
-		return;
-	end
-	
-	if ( castSDDesire > 0 ) 
-	then
-		if npcBot:HasScepter() or npcBot:HasModifier('modifier_item_ultimate_scepter_consumed')  then
-			npcBot:Action_UseAbilityOnEntity( abilitySD, npcBot );
-		else
-			npcBot:Action_UseAbility( abilitySD );
-			return;
-		end
-	end
+    -- Priority order: Ultimate > Axes (for damage/utility) > Switch Stance
+    if castUltDesire > 0 then
+        bot:Action_UseAbility(abilityUltimate);
+        return;
+    end
 
+    if castRangedDesire > 0 then
+        bot:Action_UseAbilityOnLocation(abilityAxesRanged, castRangedTarget);
+        lastSwitchTime = DotaTime(); -- Will auto-switch to ranged
+        return;
+    end
+
+    if castMeleeDesire > 0 then
+        bot:Action_UseAbility(abilityAxesMelee);
+        lastSwitchTime = DotaTime(); -- Will auto-switch to melee
+        return;
+    end
+
+    if castSwitchDesire > 0 then
+        bot:Action_UseAbility(abilitySwitch);
+        lastSwitchTime = DotaTime();
+        return;
+    end
 end
 
-
-function ConsiderDarkPact()
-
-	-- Make sure it's castable
-	if ( not abilityDP:IsFullyCastable() or DotaTime() <= toggleTime + 0.2 ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-
-	--WARStatus true = melee form, otherwise = range form
-	local inMelee = false;
-	if npcBot:GetAttackRange() < 320 then
-		inMelee = true;
-	end
-
-	-- Get some of its values
-	local nCastRange = 500;
-	local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1300, true, BOT_MODE_NONE );
-	
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	if ( npcBot:GetActiveMode() == BOT_MODE_LANING ) then
-		local longestAR = 0;
-		for _,enemy in pairs(tableNearbyEnemyHeroes)
-		do
-			local enemyAR = enemy:GetAttackRange();
-			if enemyAR > longestAR then
-				longestAR = enemyAR;
-			end
-		end
-		if longestAR < 320 and not inMelee then
-			return BOT_ACTION_DESIRE_MODERATE;
-		elseif longestAR > 320 and inMelee then
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-	
-
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		if #tableNearbyEnemyHeroes > 0 and abilityPC2:IsFullyCastable() and inMelee then
-			-- print("cond 9")	
-			return BOT_ACTION_DESIRE_MODERATE;
-		elseif not abilityPC2:IsFullyCastable() and not inMelee then   	
-			-- print("cond 10")
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-
-	if mutil.IsPushing(npcBot)
-	then
-		if tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes > 1 and inMelee then
-			-- print("cond 6")
-			return BOT_ACTION_DESIRE_MODERATE;
-		elseif 	tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes < 1 and not inMelee then
-			-- print("cond 7")
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-	
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot) 
-	then
-		local npcTarget = npcBot:GetTarget();
-		if ( npcTarget ~= nil and npcTarget:IsHero() ) 
-		then
-			local Dist = GetUnitToUnitDistance(npcTarget, npcBot);
-			if ( mutil.IsDisabled(true, npcTarget) or mutil.SafeIsChanneling(npcTarget) 
-				or npcBot:HasModifier('modifier_troll_warlord_battle_trance')
-				or npcTarget:GetCurrentMovementSpeed() < npcBot:GetCurrentMovementSpeed() ) and Dist < 1000  	
-			then
-				if inMelee and abilityPC2:IsFullyCastable() then
-					-- print("cond 1")
-					return BOT_ACTION_DESIRE_MODERATE;	
-				elseif not inMelee and abilityPC2:IsFullyCastable() == false then
-					-- print("cond 2")
-					return BOT_ACTION_DESIRE_MODERATE;
-				end
-			else
-				if Dist > nCastRange + 200 and not inMelee then
-					-- print("cond 3")
-					return BOT_ACTION_DESIRE_MODERATE;
-				elseif Dist > nCastRange / 2 + 175 and Dist < nCastRange + 200 and inMelee then
-					-- print("cond 4")
-					return BOT_ACTION_DESIRE_MODERATE;
-				elseif Dist < nCastRange / 2 + 175 and not inMelee then
-					-- print("cond 5")
-					return BOT_ACTION_DESIRE_MODERATE;
-				end
-			end
-		end
-	end
-	
-	
-	if #tableNearbyEnemyHeroes == 0 and not inMelee then
-		-- print("cond 8")
-		return BOT_ACTION_DESIRE_MODERATE;
-	end
-
-	return BOT_ACTION_DESIRE_NONE;
-
+function IsInMeleeForm()
+    -- Troll is in melee form when attack range is low
+    return bot:GetAttackRange() < 320;
 end
 
-
-function ConsiderPounce()
-
-	-- Make sure it's castable
-	if ( not abilityPC:IsFullyCastable() or npcBot:GetAttackRange() > 320 ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-
-
-	-- Get some of its values
-	local nRadius = abilityPC:GetSpecialValueInt( "max_range" );
-
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nRadius, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE;
-			end
-		end
-	end
-	
-	if mutil.IsPushing(npcBot)
-	then
-		local tableNearbyEnemyCreeps = npcBot:GetNearbyLaneCreeps ( nRadius, true );
-		if tableNearbyEnemyCreeps ~= nil and #tableNearbyEnemyCreeps >= 3 then
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot) 
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnNonMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nRadius) 
-		then
-			return BOT_ACTION_DESIRE_HIGH;
-		end
-	end
-
-	return BOT_ACTION_DESIRE_NONE;
-
+function IsInRangedForm()
+    return not IsInMeleeForm();
 end
 
-function ConsiderPounce2()
-
-	-- Make sure it's castable
-	if ( not abilityPC2:IsFullyCastable() or npcBot:GetAttackRange() < 320 ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-
-
-	-- Get some of its values
-	local nCastRange = abilityPC2:GetCastRange(  );
-	local nCastPoint = abilityPC2:GetCastPoint(  );
-
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nCastRange, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 1.0 ) ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE, npcEnemy:GetLocation();
-			end
-		end
-	end
-
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot) 
-	then
-		local npcTarget = npcBot:GetTarget();
-
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnNonMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange-200) 
-		then
-			return BOT_ACTION_DESIRE_MODERATE, npcTarget:GetExtrapolatedLocation(nCastPoint);
-		end
-	end
-
-	return BOT_ACTION_DESIRE_NONE;
-
+function ConsiderSwitchStance()
+    if abilitySwitch == nil or not abilitySwitch:IsFullyCastable() then
+        return BOT_ACTION_DESIRE_NONE;
+    end
+    
+    -- Prevent spam switching
+    if DotaTime() - lastSwitchTime < switchCooldown then
+        return BOT_ACTION_DESIRE_NONE;
+    end
+    
+    local enemies = bot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
+    local inMelee = IsInMeleeForm();
+    
+    -- LANING: Prefer ranged form for farming and harassment
+    if bot:GetActiveMode() == BOT_MODE_LANING then
+        if inMelee and #enemies <= 1 then
+            return BOT_ACTION_DESIRE_MODERATE; -- Switch to ranged for farming
+        end
+    end
+    
+    -- FIGHTING: Smart stance switching based on situation
+    if mutils.IsGoingOnSomeone(bot) or mutils.IsInTeamFight(bot, 1200) then
+        local target = bot:GetTarget();
+        
+        if mutils.IsValidTarget(target) then
+            local distanceToTarget = GetUnitToUnitDistance(target, bot);
+            
+            -- Switch to melee when close enough to attack and root
+            if distanceToTarget <= 400 and not inMelee then
+                return BOT_ACTION_DESIRE_HIGH;
+            end
+            
+            -- Switch to ranged when target is far or we can't reach
+            if distanceToTarget > 600 and inMelee then
+                return BOT_ACTION_DESIRE_HIGH;
+            end
+        end
+        
+        -- Default to melee in teamfights for better DPS and root chance
+        if mutils.IsInTeamFight(bot, 800) and not inMelee then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    -- RETREATING: Use ranged form for kiting
+    if mutils.IsRetreating(bot) and inMelee and #enemies > 0 then
+        return BOT_ACTION_DESIRE_HIGH;
+    end
+    
+    -- PUSHING: Use ranged for tower siege
+    if mutils.IsPushing(bot) and inMelee then
+        local towers = bot:GetNearbyTowers(800, true);
+        if #towers > 0 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    -- DEFAULT: Stay in ranged when no enemies around
+    if #enemies == 0 and inMelee then
+        return BOT_ACTION_DESIRE_LOW;
+    end
+    
+    return BOT_ACTION_DESIRE_NONE;
 end
 
-function ConsiderShadowDance()
-
-	-- Make sure it's castable
-	if ( not abilitySD:IsFullyCastable() or mutil.SafeGetHealth(npcBot) > 0.55* npcBot:GetMaxHealth() ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-	
-	local nAttackRange = npcBot:GetAttackRange();
-	
-
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1300, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE;
-			end
-		end
-	end
-
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	if ( npcBot:GetActiveMode() == BOT_MODE_ROSHAN  ) 
-	then
-		local npcTarget = mutil.SafeGetAttackTarget(npcBot);
-		if ( mutil.IsRoshan(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nAttackRange)  )
-		then
-			return BOT_ACTION_DESIRE_LOW;
-		end
-	end
-	
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot) 
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nAttackRange) 
-		then
-			return BOT_ACTION_DESIRE_HIGH;
-		end
-	end
-
-	return BOT_ACTION_DESIRE_NONE;
-
+function ConsiderWhirlingAxesRanged()
+    if abilityAxesRanged == nil or not abilityAxesRanged:IsFullyCastable() then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
+    
+    local nCastRange = math.min(abilityAxesRanged:GetCastRange(), 1600);
+    local nManaCost = abilityAxesRanged:GetManaCost();
+    local enemies = bot:GetNearbyHeroes(math.min(nCastRange + 200, 1600), true, BOT_MODE_NONE);
+    
+    -- INTERRUPT: Channeling enemies (highest priority)
+    for _, enemy in pairs(enemies) do
+        if mutils.SafeIsChanneling(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+            return BOT_ACTION_DESIRE_VERYHIGH, enemy:GetLocation();
+        end
+    end
+    
+    -- TEAMFIGHT: Use for AOE damage and slow
+    if mutils.IsInTeamFight(bot, 1200) then
+        local locationAoE = bot:FindAoELocation(true, true, bot:GetLocation(), nCastRange, 150, 0, 0);
+        if locationAoE.count >= 2 then
+            return BOT_ACTION_DESIRE_HIGH, locationAoE.targetloc;
+        elseif locationAoE.count >= 1 then
+            return BOT_ACTION_DESIRE_MODERATE, locationAoE.targetloc;
+        end
+    end
+    
+    -- OFFENSIVE: Slow enemies when hunting
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) then
+            local distance = GetUnitToUnitDistance(target, bot);
+            -- Use to slow distant enemies so we can catch up
+            if distance > 400 and distance <= nCastRange then
+                return BOT_ACTION_DESIRE_HIGH, target:GetExtrapolatedLocation(0.4);
+            end
+        end
+    end
+    
+    -- HARASSMENT: During laning
+    if bot:GetActiveMode() == BOT_MODE_LANING and mutils.AllowedToSpam(bot, nManaCost) then
+        if #enemies >= 1 and mutils.CanCastOnNonMagicImmune(enemies[1]) then
+            return BOT_ACTION_DESIRE_MODERATE, enemies[1]:GetExtrapolatedLocation(0.4);
+        end
+    end
+    
+    -- FARMING: Clear creep waves
+    if (bot:GetActiveMode() == BOT_MODE_LANING or mutils.IsPushing(bot)) and 
+       mutils.AllowedToSpam(bot, nManaCost) then
+        local creeps = bot:GetNearbyLaneCreeps(nCastRange, true);
+        if #creeps >= 3 then
+            return BOT_ACTION_DESIRE_LOW, creeps[1]:GetLocation();
+        end
+    end
+    
+    -- RETREAT: Slow pursuing enemies
+    if mutils.IsRetreating(bot) then
+        for _, enemy in pairs(enemies) do
+            if bot:WasRecentlyDamagedByHero(enemy, 1.0) then
+                return BOT_ACTION_DESIRE_HIGH, enemy:GetExtrapolatedLocation(0.4);
+            end
+        end
+    end
+    
+    return BOT_ACTION_DESIRE_NONE, nil;
 end
 
+function ConsiderWhirlingAxesMelee()
+    if abilityAxesMelee == nil or not abilityAxesMelee:IsFullyCastable() then
+        return BOT_ACTION_DESIRE_NONE;
+    end
+    
+    local nRadius = abilityAxesMelee:GetSpecialValueInt("max_range");
+    local nManaCost = abilityAxesMelee:GetManaCost();
+    local enemies = bot:GetNearbyHeroes(math.min(nRadius + 100, 1600), true, BOT_MODE_NONE);
+    
+    -- TEAMFIGHT: Use for AOE damage and blind
+    if mutils.IsInTeamFight(bot, 800) then
+        if #enemies >= 2 then
+            return BOT_ACTION_DESIRE_HIGH;
+        elseif #enemies >= 1 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    -- OFFENSIVE: Use when in melee range for blind effect
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and GetUnitToUnitDistance(target, bot) <= nRadius then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
+    
+    -- DEFENSIVE: Use when surrounded or taking damage
+    if #enemies >= 2 or (mutils.IsRetreating(bot) and #enemies >= 1) then
+        return BOT_ACTION_DESIRE_HIGH;
+    end
+    
+    -- FARMING: Clear large creep groups efficiently
+    if mutils.AllowedToSpam(bot, nManaCost) then
+        local creeps = bot:GetNearbyLaneCreeps(nRadius, true);
+        if #creeps >= 4 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    return BOT_ACTION_DESIRE_NONE;
+end
 
+function ConsiderBattleTrance()
+    if abilityUltimate == nil or not abilityUltimate:IsFullyCastable() then
+        return BOT_ACTION_DESIRE_NONE;
+    end
+    
+    local healthPercent = bot:GetHealth() / bot:GetMaxHealth();
+    local enemies = bot:GetNearbyHeroes(900, true, BOT_MODE_NONE);
+    
+    -- EMERGENCY: Use when very low on health (core mechanic)
+    if healthPercent <= 0.25 and #enemies > 0 then
+        return BOT_ACTION_DESIRE_VERYHIGH;
+    end
+    
+    -- AGGRESSIVE: Use when low health but in good fighting position
+    if healthPercent <= 0.4 and mutils.IsInTeamFight(bot, 900) and #enemies >= 1 then
+        return BOT_ACTION_DESIRE_HIGH;
+    end
+    
+    -- TEAMFIGHT: Use in major teamfights even with decent health
+    if mutils.IsInTeamFight(bot, 900) and #enemies >= 3 then
+        return BOT_ACTION_DESIRE_HIGH;
+    end
+    
+    -- OFFENSIVE: Use when going on important targets
+    if mutils.IsGoingOnSomeone(bot) and healthPercent <= 0.5 then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and GetUnitToUnitDistance(target, bot) <= 600 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    -- ROSHAN: Use during Roshan fights
+    if bot:GetActiveMode() == BOT_MODE_ROSHAN then
+        local roshan = mutils.SafeGetAttackTarget(bot);
+        if mutils.IsRoshan(roshan) and healthPercent <= 0.6 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    -- DESPERATE: Use when outnumbered and fighting
+    if #enemies >= 2 and healthPercent <= 0.6 and 
+       (mutils.IsGoingOnSomeone(bot) or bot:WasRecentlyDamagedByAnyHero(2.0)) then
+        return BOT_ACTION_DESIRE_HIGH;
+    end
+    
+    return BOT_ACTION_DESIRE_NONE;
+end

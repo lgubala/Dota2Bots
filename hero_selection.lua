@@ -89,7 +89,8 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_kunkka'
+    'npc_dota_hero_kunkka',
+    'npc_dota_hero_troll_warlord'
 }
 
 local direHeroList = {
