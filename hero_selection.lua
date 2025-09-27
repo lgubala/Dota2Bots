@@ -89,8 +89,7 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_keeper_of_the_light',
-    'npc_dota_hero_elder_titan'
+    'npc_dota_hero_tiny'
 }
 
 local direHeroList = {

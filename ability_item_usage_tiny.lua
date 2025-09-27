@@ -373,7 +373,7 @@ local function ConsiderTreeChannel()
 	end
 	
 	-- SIEGE: Channel on towers when pushing
-	if mutil.IsPushing(bot) then
+	if mutils.IsPushing(bot) then
 		local nearbyTowers = bot:GetNearbyTowers(nCastRange, true);
 		local enemies = bot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
 		
