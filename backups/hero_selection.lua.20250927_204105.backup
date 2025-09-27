@@ -89,11 +89,15 @@ local banList={
 }
 
 local radiantHeroList = {
-    
+    'npc_dota_hero_tiny'
 }
 
 local direHeroList = {
-    
+    'npc_dota_hero_omniknight',
+    'npc_dota_hero_clinkz',
+    'npc_dota_hero_sniper',
+    'npc_dota_hero_templar_assassin',
+    'npc_dota_hero_broodmother'
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------
