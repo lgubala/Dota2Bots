@@ -34,8 +34,10 @@ local npcBot = nil;
 -- Spirit state tracking for combo system
 local spiritCastTime = 0;
 local spiritMoveTime = 0;
-local spiritDuration = 8.0; -- Approximate spirit duration
+local spiritDuration = 10.0; -- Correct spirit duration
 local comboState = "none"; -- "spirit_cast", "spirit_moving", "ready_for_stomp"
+local lastMoveTime = 0;
+local moveCooldown = 1.5; -- Wait between moves
 
 function AbilityUsageThink()
 
@@ -68,7 +70,7 @@ function AbilityUsageThink()
 	if ( castMoveDesire > 0 ) 
 	then
 		npcBot:Action_UseAbilityOnLocation( abilityMove, castMoveLocation );
-		spiritMoveTime = DotaTime();
+		lastMoveTime = DotaTime();
 		return;
 	end
 	
@@ -97,81 +99,92 @@ function UpdateComboState()
 		comboState = "none";
 		spiritCastTime = 0;
 		spiritMoveTime = 0;
+		lastMoveTime = 0;
 	end
 	
-	-- Update combo progression
-	if comboState == "spirit_cast" and currentTime - spiritCastTime > 1.0 then
+	-- Update combo progression - spirit can be moved immediately after cast
+	if comboState == "spirit_cast" and currentTime - spiritCastTime > 0.5 then
 		comboState = "spirit_moving";
 	end
 end
 
 function ConsiderMoveSpirit()
 	-- Only consider if we have an active spirit and move ability is available
-	if not mutil.CanBeCast(abilityMove) or comboState ~= "spirit_moving" then
+	if not mutil.CanBeCast(abilityMove) or comboState == "none" then
 		return BOT_ACTION_DESIRE_NONE, nil;
 	end
 	
-	local nCastRange = abilityMove:GetCastRange();
+	-- Don't spam moves - wait between movements
+	local currentTime = DotaTime();
+	if currentTime - lastMoveTime < moveCooldown then
+		return BOT_ACTION_DESIRE_NONE, nil;
+	end
 	
-	-- Find best position to move spirit for maximum enemy contact
-	local bestLocation = nil;
-	local maxEnemyCount = 0;
+	local nCastRange = math.min(abilityMove:GetCastRange(), 1600);
 	local spiritRadius = 275; -- Approximate spirit effect radius
 	
-	-- TEAMFIGHT: Position spirit to affect most enemies
-	if mutil.IsInTeamFight(npcBot, 1200) then
-		local enemies = npcBot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
-		if #enemies >= 2 then
-			-- Find center of enemy group
-			local totalX, totalY = 0, 0;
-			for _, enemy in pairs(enemies) do
-				local loc = enemy:GetLocation();
-				totalX = totalX + loc.x;
-				totalY = totalY + loc.y;
-			end
-			local centerX = totalX / #enemies;
-			local centerY = totalY / #enemies;
-			local centerLoc = Vector(centerX, centerY, 0);
-			
-			-- Check if this position is within move range
-			if GetUnitToLocationDistance(npcBot, centerLoc) <= nCastRange then
-				return BOT_ACTION_DESIRE_HIGH, centerLoc;
-			end
+	-- ALWAYS try to move spirit for maximum enemy contact during its duration
+	local enemies = npcBot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
+	
+	-- TEAMFIGHT: Position spirit to affect most enemies (HIGH PRIORITY)
+	if mutil.IsInTeamFight(npcBot, 1200) and #enemies >= 2 then
+		-- Find center of enemy group
+		local totalX, totalY = 0, 0;
+		for _, enemy in pairs(enemies) do
+			local loc = enemy:GetLocation();
+			totalX = totalX + loc.x;
+			totalY = totalY + loc.y;
+		end
+		local centerX = totalX / #enemies;
+		local centerY = totalY / #enemies;
+		local centerLoc = Vector(centerX, centerY, 0);
+		
+		-- Always try to move to center if possible
+		if GetUnitToLocationDistance(npcBot, centerLoc) <= nCastRange then
+			lastMoveTime = currentTime;
+			return BOT_ACTION_DESIRE_VERYHIGH, centerLoc;
 		end
 	end
 	
-	-- OFFENSIVE: Move spirit toward target
+	-- OFFENSIVE: Move spirit toward target (ALWAYS when going on someone)
 	if mutil.IsGoingOnSomeone(npcBot) then
 		local target = npcBot:GetTarget();
 		if mutil.IsValidTarget(target) and mutil.IsInRange(target, npcBot, nCastRange) then
-			-- Move spirit slightly ahead of target to account for movement
-			local targetLoc = target:GetExtrapolatedLocation(1.5);
+			-- Move spirit ahead of target to get bonuses
+			local targetLoc = target:GetExtrapolatedLocation(1.0);
+			lastMoveTime = currentTime;
 			return BOT_ACTION_DESIRE_HIGH, targetLoc;
 		end
 	end
 	
+	-- AGGRESSIVE: Move spirit toward ANY nearby enemy for bonuses
+	if #enemies > 0 then
+		local closestEnemy = enemies[1];
+		local minDist = GetUnitToUnitDistance(npcBot, closestEnemy);
+		for _, enemy in pairs(enemies) do
+			local dist = GetUnitToUnitDistance(npcBot, enemy);
+			if dist < minDist then
+				minDist = dist;
+				closestEnemy = enemy;
+			end
+		end
+		
+		if minDist <= nCastRange then
+			lastMoveTime = currentTime;
+			return BOT_ACTION_DESIRE_MODERATE, closestEnemy:GetLocation();
+		end
+	end
+	
 	-- DEFENSIVE: Move spirit between bot and enemies when retreating
-	if mutil.IsRetreating(npcBot) then
-		local enemies = npcBot:GetNearbyHeroes(800, true, BOT_MODE_NONE);
-		if #enemies > 0 then
-			-- Position spirit between bot and closest enemy
-			local closestEnemy = enemies[1];
-			local minDist = GetUnitToUnitDistance(npcBot, closestEnemy);
-			for _, enemy in pairs(enemies) do
-				local dist = GetUnitToUnitDistance(npcBot, enemy);
-				if dist < minDist then
-					minDist = dist;
-					closestEnemy = enemy;
-				end
-			end
-			
-			local botLoc = npcBot:GetLocation();
-			local enemyLoc = closestEnemy:GetLocation();
-			local midPoint = Vector((botLoc.x + enemyLoc.x) / 2, (botLoc.y + enemyLoc.y) / 2, 0);
-			
-			if GetUnitToLocationDistance(npcBot, midPoint) <= nCastRange then
-				return BOT_ACTION_DESIRE_MODERATE, midPoint;
-			end
+	if mutil.IsRetreating(npcBot) and #enemies > 0 then
+		local closestEnemy = enemies[1];
+		local botLoc = npcBot:GetLocation();
+		local enemyLoc = closestEnemy:GetLocation();
+		local midPoint = Vector((botLoc.x + enemyLoc.x) / 2, (botLoc.y + enemyLoc.y) / 2, 0);
+		
+		if GetUnitToLocationDistance(npcBot, midPoint) <= nCastRange then
+			lastMoveTime = currentTime;
+			return BOT_ACTION_DESIRE_MODERATE, midPoint;
 		end
 	end
 	
