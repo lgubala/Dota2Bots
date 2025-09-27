@@ -80,9 +80,17 @@ function AbilityUsageThink()
     castRDesire, castRTarget = ConsiderGhostship();
     castShardDesire, castShardTarget = ConsiderTidalWave();
 
-    -- Priority order: Ultimate > Interrupt > Combo setup > Offensive > Utility
+
+    -- Priority order: Ultimate > Shard > Interrupt > Combo setup > Offensive > Utility
     if castRDesire > 0 then
         bot:Action_UseAbilityOnLocation(abilityR, castRTarget);
+        return;
+    end
+
+    -- PRIORITIZE SHARD USAGE - Move it higher in priority
+    if castShardDesire > 0 then
+        ----print("[KUNKKA] Using Tidal Wave at: " .. tostring(castShardTarget));
+        bot:Action_UseAbilityOnLocation(abilityShard, castShardTarget);
         return;
     end
 
@@ -94,11 +102,6 @@ function AbilityUsageThink()
     if castEDesire > 0 then
         bot:Action_UseAbilityOnEntity(abilityE, castETarget);
         xMarkTime = DotaTime();
-        return;
-    end
-
-    if castShardDesire > 0 then
-        bot:Action_UseAbilityOnLocation(abilityShard, castShardTarget);
         return;
     end
 
@@ -215,7 +218,7 @@ function ExecuteCombo(target, location)
     end
     
     -- Add Tidal Wave if we have shard and positioning is good
-    if abilityShard ~= nil and abilityShard:IsFullyCastable() and HasShard() then
+    if abilityShard ~= nil and abilityShard:IsFullyCastable() and not abilityShard:IsHidden() then
         local tidalWaveLoc = CalculateTidalWaveLocation(target, location);
         if tidalWaveLoc ~= nil then
             bot:ActionQueue_UseAbilityOnLocation(abilityShard, tidalWaveLoc);
@@ -417,74 +420,45 @@ function ConsiderGhostship()
 end
 
 function ConsiderTidalWave()
-    if abilityShard == nil or not abilityShard:IsFullyCastable() or not HasShard() then
+    if abilityShard == nil then
+        --print("[KUNKKA DEBUG] Tidal Wave ability is nil");
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
+    
+    if not abilityShard:IsFullyCastable() then
+        --print("[KUNKKA DEBUG] Tidal Wave not castable");
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
+    
+    if not bot:HasModifier("modifier_item_aghanims_shard") then
+        --print("[KUNKKA DEBUG] No shard modifier");
         return BOT_ACTION_DESIRE_NONE, nil;
     end
     
     local nCastRange = math.min(abilityShard:GetCastRange(), 1600);
-    local nManaCost = abilityShard:GetManaCost();
     local enemies = bot:GetNearbyHeroes(math.min(nCastRange + 200, 1600), true, BOT_MODE_NONE);
     
-    -- TEAMFIGHT: Use for positioning enemies (much more liberal)
-    if mutils.IsInTeamFight(bot, 1200) and #enemies >= 1 then -- Reduced from 2
-        local bestLoc = CalculateTidalWaveLocation(enemies[1], enemies[1]:GetLocation());
-        if bestLoc ~= nil then
-            return BOT_ACTION_DESIRE_HIGH, bestLoc;
-        end
+    --print("[KUNKKA DEBUG] Tidal Wave - Enemies found: " .. #enemies .. ", Cast range: " .. nCastRange);
+    
+    -- VERY AGGRESSIVE: Use on ANY enemy
+    if #enemies >= 1 then
+        local target = enemies[1];
+        --print("[KUNKKA DEBUG] CASTING Tidal Wave on " .. target:GetUnitName());
+        return BOT_ACTION_DESIRE_VERYHIGH, target:GetLocation();
     end
     
-    -- OFFENSIVE: Use aggressively when going on someone
-    if mutils.IsGoingOnSomeone(bot) then
-        local target = bot:GetTarget();
-        if mutils.IsValidTarget(target) and GetUnitToUnitDistance(target, bot) <= nCastRange then
-            local waveLoc = CalculateTidalWaveLocation(target, target:GetLocation());
-            if waveLoc ~= nil then
-                return BOT_ACTION_DESIRE_HIGH, waveLoc; -- Increased from MODERATE
-            end
-        end
+    -- FARMING: Use on creeps  
+    local creeps = bot:GetNearbyLaneCreeps(nCastRange, true);
+    if #creeps >= 2 then
+        --print("[KUNKKA DEBUG] CASTING Tidal Wave on " .. #creeps .. " creeps");
+        return BOT_ACTION_DESIRE_HIGH, creeps[1]:GetLocation();
     end
     
-    -- FARMING: Use for clearing creep waves if we have good mana
-    if (bot:GetActiveMode() == BOT_MODE_LANING or mutils.IsPushing(bot)) and 
-       mutils.AllowedToSpam(bot, nManaCost) then
-        local creeps = bot:GetNearbyLaneCreeps(nCastRange, true);
-        if #creeps >= 3 then
-            return BOT_ACTION_DESIRE_MODERATE, creeps[1]:GetLocation();
-        end
-    end
-    
-    -- HARASSMENT: Use during laning if we have plenty of mana
-    if bot:GetActiveMode() == BOT_MODE_LANING and bot:GetMana() > nManaCost * 3 then
-        if #enemies >= 1 and mutils.CanCastOnNonMagicImmune(enemies[1]) then
-            local waveLoc = CalculateTidalWaveLocation(enemies[1], enemies[1]:GetLocation());
-            if waveLoc ~= nil then
-                return BOT_ACTION_DESIRE_MODERATE, waveLoc;
-            end
-        end
-    end
-    
-    -- RETREAT: Push enemies away
-    if mutils.IsRetreating(bot) and #enemies > 0 then
-        local pushLoc = bot:GetLocation() + (bot:GetLocation() - enemies[1]:GetLocation()):Normalized() * 400;
-        return BOT_ACTION_DESIRE_HIGH, pushLoc;
-    end
-    
-    -- INTERRUPT: Use to disrupt channeling enemies  
-    for _, enemy in pairs(enemies) do
-        if mutils.SafeIsChanneling(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
-            local waveLoc = CalculateTidalWaveLocation(enemy, enemy:GetLocation());
-            if waveLoc ~= nil then
-                return BOT_ACTION_DESIRE_VERYHIGH, waveLoc;
-            end
-        end
-    end
-    
+    --print("[KUNKKA DEBUG] No targets for Tidal Wave");
     return BOT_ACTION_DESIRE_NONE, nil;
 end
 
-function HasShard()
-    return bot:HasModifier("modifier_item_aghanims_shard");
-end
+
 
 function CalculateTidalWaveLocation(target, targetLoc)
     if target == nil then return nil end
