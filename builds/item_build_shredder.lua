@@ -1,0 +1,36 @@
+X = {}
+
+local IBUtil = require(GetScriptDirectory() .. "/ItemBuildUtility");
+local npcBot = GetBot();
+local talents = IBUtil.FillTalenTable(npcBot);
+local skills  = IBUtil.FillSkillTable(npcBot, IBUtil.GetSlotPattern(1));
+
+X["items"] = {
+	"item_magic_wand",
+	"item_arcane_boots",
+	"item_vanguard",
+	"item_crimson_guard",
+	"item_lotus_orb",
+	"item_aghanims_shard",
+	"item_pipe",
+	"item_bloodstone",
+	"item_ultimate_scepter",
+	"item_shivas_guard",
+	"item_ultimate_scepter_2",
+	"item_sheepstick",
+	"item_moon_shard",
+};			
+
+X["builds"] = {
+	{3,1,3,2,3,4,3,2,2,2,4,1,1,1,4},
+	{3,2,3,1,3,4,3,2,2,2,4,1,1,1,4},
+	{3,2,1,3,2,4,1,3,2,1,4,3,2,1,4}
+}
+
+X["skills"] = IBUtil.GetBuildPattern(
+	  "normal", 
+	  IBUtil.GetRandomBuild(X['builds']), skills, 
+	  {2,4,6,7,1,3,5,8}, talents
+);
+
+return X
