@@ -5,16 +5,20 @@ local npcBot = GetBot();
 local talents = IBUtil.FillTalenTable(npcBot);
 
 -- DEBUG: Let's manually force Berserker's Rage into the build
-X["items"] = { 
+X["items"] = {
 	"item_quelling_blade",
-	"item_magic_wand",
 	"item_power_treads_agi",
+	"item_lifesteal",
+	"item_bfury",
+	"item_aghanims_shard",
 	"item_sange_and_yasha",
 	"item_black_king_bar",
 	"item_basher",
-	"item_abyssal_blade",
 	"item_butterfly",
-	"item_monkey_king_bar",
+	"item_moon_shard",
+	"item_satanic",
+	"item_ultimate_scepter_2",
+	"item_abyssal_blade",
 };			
 
 -- MANUAL BUILD: Force every ability to get at least 1 point to see what happens

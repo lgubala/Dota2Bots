@@ -89,15 +89,17 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_kunkka'
+    'npc_dota_hero_kunkka',
+    'npc_dota_hero_ogre_magi',
+    'npc_dota_hero_luna',
+    'npc_dota_hero_lina'
 }
 
 local direHeroList = {
-    'npc_dota_hero_omniknight',
-    'npc_dota_hero_clinkz',
-    'npc_dota_hero_sniper',
-    'npc_dota_hero_templar_assassin',
-    'npc_dota_hero_broodmother'
+    'npc_dota_hero_troll_warlord',
+    'npc_dota_hero_tiny',
+    'npc_dota_hero_bane',
+    'npc_dota_hero_axe'
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------

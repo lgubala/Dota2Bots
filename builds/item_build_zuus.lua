@@ -15,7 +15,10 @@ X["items"] = {
 	"item_ultimate_scepter",
 	"item_octarine_core",
 	"item_ethereal_blade",
+	"item_refresher",
+	"item_wind_waker",
 	"item_ultimate_scepter_2",
+	"item_dagon_5",
 };			
 
 X["builds"] = {

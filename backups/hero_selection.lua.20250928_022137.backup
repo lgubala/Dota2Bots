@@ -89,16 +89,17 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_keeper_of_the_light',
-    'npc_dota_hero_elder_titan'
+    'npc_dota_hero_bristleback',
+    'npc_dota_hero_phoenix',
+    'npc_dota_hero_gyrocopter',
+    'npc_dota_hero_disruptor'
 }
 
 local direHeroList = {
-    'npc_dota_hero_omniknight',
-    'npc_dota_hero_clinkz',
-    'npc_dota_hero_sniper',
-    'npc_dota_hero_templar_assassin',
-    'npc_dota_hero_broodmother'
+    'npc_dota_hero_juggernaut',
+    'npc_dota_hero_pudge',
+    'npc_dota_hero_lich',
+    'npc_dota_hero_magnataur'
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------

@@ -8,7 +8,6 @@ local skills = IBUtil.FillSkillTable(npcBot, {0,1,2,5});
 X["items"] = {
 	"item_magic_wand",
 	"item_power_treads_str",
-	"item_armlet",
 	"item_sange",
 	"item_aghanims_shard",
 	"item_dragon_lance",
@@ -18,7 +17,6 @@ X["items"] = {
 	"item_satanic",
 	"item_hurricane_pike",
 	"item_heart",
-	"item_moon_shard",
 	"item_ultimate_scepter_2",
 	"item_assault",
 };			

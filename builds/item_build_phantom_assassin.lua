@@ -10,15 +10,13 @@ X["items"] = {
 	"item_magic_wand",
 	"item_power_treads_agi",
 	"item_bfury",
-	"item_aghanims_shard",
-	"item_angels_demise",
 	"item_basher",
 	"item_black_king_bar",
-	"item_octarine_core",
 	"item_abyssal_blade",
+	"item_monkey_king_bar",
 	"item_ultimate_scepter",
-	"item_moon_shard",
 	"item_ultimate_scepter_2",
+	"item_nullifier",
 };			
 
 X["builds"] = {

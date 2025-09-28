@@ -16,7 +16,6 @@ X["items"] = {
 	"item_abyssal_blade",
 	"item_satanic",
 	"item_ultimate_scepter_2",
-	"item_moon_shard",
 	"item_refresher",
 };
 

@@ -9,11 +9,13 @@ X["items"] = {
 	"item_magic_wand",
 	"item_phase_boots",
 	"item_invis_sword",
+	"item_aghanims_shard",
 	"item_greater_crit",
 	"item_kaya_and_sange",
 	"item_black_king_bar",
 	"item_silver_edge",
 	"item_ultimate_scepter_2",
+	"item_moon_shard",
 	"item_refresher",
 };			
 

@@ -10,10 +10,10 @@ X["items"] = {
 	"item_arcane_boots",
 	"item_echo_sabre",
 	"item_harpoon",
+	"item_pipe",
 	"item_black_king_bar",
 	"item_aghanims_shard",
 	"item_satanic",
-	"item_shivas_guard",
 	"item_ultimate_scepter_2",
 	"item_refresher",
 };			

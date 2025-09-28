@@ -142,12 +142,12 @@ bot.abilities = RemoveMinusOne(bot.abilities);
 -- Safe wrapper for GetAbilityByName
 function SafeGetAbilityByName(bot, abilityName)
     if not bot then
-        --print("[ERROR] SafeGetAbilityByName: bot is nil")
+        print("[ERROR] SafeGetAbilityByName: bot is nil")
         return nil
     end
     
     if not abilityName or abilityName == "" or abilityName == "-1" then
-        --print("[ERROR] SafeGetAbilityByName: invalid abilityName '" .. tostring(abilityName) .. "' for bot: " .. bot:GetUnitName())
+        print("[ERROR] SafeGetAbilityByName: invalid abilityName '" .. tostring(abilityName) .. "' for bot: " .. bot:GetUnitName())
         return nil
     end
     
@@ -155,7 +155,7 @@ function SafeGetAbilityByName(bot, abilityName)
     if success then
         return ability
     else
-        --print("[ERROR] SafeGetAbilityByName: failed to get ability '" .. abilityName .. "' for bot: " .. bot:GetUnitName())
+        print("[ERROR] SafeGetAbilityByName: failed to get ability '" .. abilityName .. "' for bot: " .. bot:GetUnitName())
         return nil
     end
 end
@@ -165,11 +165,11 @@ end
 function DebugAbilityInitialization(bot)
     if not bot then return end
     
-    --print("[DEBUG] Ability Check for: " .. bot:GetUnitName())
+    print("[DEBUG] Ability Check for: " .. bot:GetUnitName())
     if bot.abilities then
-        --print("[DEBUG] bot.abilities length: " .. #bot.abilities)
+        print("[DEBUG] bot.abilities length: " .. #bot.abilities)
         for i = 1, math.min(#bot.abilities, 5) do
-            --print("[DEBUG] bot.abilities[" .. i .. "] = '" .. tostring(bot.abilities[i]) .. "'")
+            print("[DEBUG] bot.abilities[" .. i .. "] = '" .. tostring(bot.abilities[i]) .. "'")
         end
     end
 end
