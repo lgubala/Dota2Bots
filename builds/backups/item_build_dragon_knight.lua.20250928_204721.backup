@@ -9,14 +9,15 @@ X["items"] = {
 	"item_magic_wand",
 	"item_bracer",
 	"item_power_treads_str",
-	"item_invis_sword",
-	"item_black_king_bar",
+	"item_sange",
 	"item_aghanims_shard",
+	"item_sange_and_yasha",
 	"item_assault",
+	"item_black_king_bar",
 	"item_ultimate_scepter_2",
 	"item_heart",
+	"item_moon_shard",
 	"item_satanic",
-	"item_silver_edge",
 };	
 
 X["builds"] = {

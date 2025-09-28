@@ -89,17 +89,11 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_zuus',
-    'npc_dota_hero_elder_titan',
-    'npc_dota_hero_huskar',
-    'npc_dota_hero_bloodseeker'
+    'npc_dota_hero_dragon_knight'
 }
 
 local direHeroList = {
-    'npc_dota_hero_crystal_maiden',
-    'npc_dota_hero_storm_spirit',
-    'npc_dota_hero_phantom_assassin',
-    'npc_dota_hero_centaur'
+    
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------
