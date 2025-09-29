@@ -14,12 +14,12 @@ X["items"] = {
 	"item_black_king_bar",
 	"item_aeon_disk",
 	"item_bloodthorn",
+	"item_moon_shard",
 	"item_sheepstick",
 	"item_ultimate_scepter_2",
 };			
 
 X["builds"] = {
-	{1,3,1,3,1,4,1,3,3,2,4,2,2,2,4},
 	{1,2,3,1,1,4,1,3,3,3,4,2,2,2,4},
 	{1,2,3,1,3,4,1,3,1,3,4,2,2,2,4}
 }

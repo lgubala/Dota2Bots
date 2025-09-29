@@ -808,7 +808,7 @@ function TurboModeCourierThink()
    
     -- DEBUG PRINTS
     local teamName = (GetTeam() == TEAM_RADIANT) and "RADIANT" or "DIRE";
-    -print("[COURIER_DEBUG] " .. teamName .. " - " .. bot:GetUnitName() .. " needs courier");
+    --print("[COURIER_DEBUG] " .. teamName .. " - " .. bot:GetUnitName() .. " needs courier");
     --print("[COURIER_DEBUG]   Stash value: " .. stashValue);
    
     -- Avoid spamming courier commands
