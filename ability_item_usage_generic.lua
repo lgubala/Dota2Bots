@@ -794,99 +794,109 @@ if bot.courierAssigned == nil then bot.courierAssigned = false; end
 if bot.courierID == nil then bot.courierID = 0; end
 
 function TurboModeCourierThink()
-	-- Only check every 3 seconds to avoid spam
-	if DotaTime() < lastCourierCheck + 3.0 then
-		return;
-	end
-	lastCourierCheck = DotaTime();
-	
-	-- Check if bot has items in stash
-	local stashValue = bot:GetStashValue();
-	if stashValue <= 0 then
-		return; -- No items in stash
-	end
-	
-	for i = 9, 14 do
-		local item = bot:GetItemInSlot(i);
-		if item ~= nil then
-			--print("[COURIER_DEBUG]   - " .. item:GetName());
-		end
-	end
-	
-	-- Avoid spamming courier commands
-	if DotaTime() < lastCourierAction + 8.0 then
-		return;
-	end
-	
-	-- PROPER COURIER ASSIGNMENT LOGIC based on your original code
-	if bot.courierAssigned == false then
-		local tm = GetTeam();
-		local pIDs = GetTeamPlayers(tm);
-				
-		-- Find which position this bot is in the team
-		for i = 1, #pIDs do
-			if IsPlayerBot(pIDs[i]) == true then
-				local mbr = GetTeamMember(i);
-				if bot == mbr then
-					-- Assign courier ID based on team member position
-					bot.courierID = i - 1;  -- This matches your original logic
-					bot.courierAssigned = true;
-					break;
-				end
-			end
-		end
-		
-		-- If assignment failed, try a different approach
-		if bot.courierAssigned == false then
-			-- Use bot's player ID as courier ID
-			bot.courierID = bot:GetPlayerID();
-			bot.courierAssigned = true;
-		end
-	end
-	
-	
-	-- Get the assigned courier
-	local courier = GetCourier(bot.courierID);
-	if courier == nil then
-		
-		-- Try to find any available courier
-		for i = 0, 4 do
-			courier = GetCourier(i);
-			if courier ~= nil then
-				bot.courierID = i;
-				break;
-			end
-		end
-		
-		if courier == nil then
-			bot.courierAssigned = false;
-			return;
-		end
-	end
-	
-	local courierState = GetCourierState(courier);
-	
-	-- Only proceed if courier is idle or at base
-	if courierState ~= COURIER_STATE_IDLE and courierState ~= COURIER_STATE_AT_BASE then
-		return;
-	end
-	
-	
-	local success = bot:ActionImmediate_Courier(courier, COURIER_ACTION_TAKE_STASH_ITEMS);
-	if success then
-		courier.latestUser = bot;
-		lastCourierAction = DotaTime();
-	else		
-		-- If that failed, try the transfer items command (in case courier already has our items)
-		local success2 = bot:ActionImmediate_Courier(courier, COURIER_ACTION_TRANSFER_ITEMS);
-		if success2 then
-			courier.latestUser = bot;
-			lastCourierAction = DotaTime();
-		else
-			-- Reset courier assignment to try again later
-			bot.courierAssigned = false;
-		end
-	end
+    -- Only check every 3 seconds to avoid spam
+    if DotaTime() < lastCourierCheck + 3.0 then
+        return;
+    end
+    lastCourierCheck = DotaTime();
+   
+    -- Check if bot has items in stash
+    local stashValue = bot:GetStashValue();
+    if stashValue <= 0 then
+        return; -- No items in stash
+    end
+   
+    -- DEBUG PRINTS
+    local teamName = (GetTeam() == TEAM_RADIANT) and "RADIANT" or "DIRE";
+    print("[COURIER_DEBUG] " .. teamName .. " - " .. bot:GetUnitName() .. " needs courier");
+    print("[COURIER_DEBUG]   Stash value: " .. stashValue);
+   
+    -- Avoid spamming courier commands
+    if DotaTime() < lastCourierAction + 8.0 then
+        print("[COURIER_DEBUG]   Waiting for action cooldown");
+        return;
+    end
+   
+    -- COURIER ASSIGNMENT LOGIC
+    if bot.courierAssigned == false then
+        local tm = GetTeam();
+        local pIDs = GetTeamPlayers(tm);
+        
+        print("[COURIER_DEBUG]   Team has " .. #pIDs .. " players");
+               
+        -- Find which position this bot is in the team
+        for i = 1, #pIDs do
+            if IsPlayerBot(pIDs[i]) == true then
+                local mbr = GetTeamMember(i);
+                if bot == mbr then
+                    -- Assign courier ID based on team member position
+                    bot.courierID = i - 1;
+                    bot.courierAssigned = true;
+                    print("[COURIER_DEBUG]   Assigned courierID: " .. bot.courierID .. " (team pos: " .. i .. ")");
+                    break;
+                end
+            end
+        end
+       
+        -- If assignment failed, try player ID approach
+        if bot.courierAssigned == false then
+            bot.courierID = bot:GetPlayerID();
+            bot.courierAssigned = true;
+            --print("[COURIER_DEBUG]   Fallback: using PlayerID " .. bot.courierID);
+        end
+    else
+        --print("[COURIER_DEBUG]   Already assigned courierID: " .. bot.courierID);
+    end
+   
+    -- Get the assigned courier
+    local courier = GetCourier(bot.courierID);
+    if courier == nil then
+        --print("[COURIER_DEBUG]   ERROR: Courier " .. bot.courierID .. " is NULL!");
+       
+        -- Try to find any available courier
+        for i = 0, 4 do
+            courier = GetCourier(i);
+            if courier ~= nil then
+                bot.courierID = i;
+                --print("[COURIER_DEBUG]   Found alternative courier: " .. i);
+                break;
+            end
+        end
+       
+        if courier == nil then
+            --print("[COURIER_DEBUG]   ERROR: No courier found at all!");
+            bot.courierAssigned = false;
+            return;
+        end
+    end
+   
+    local courierState = GetCourierState(courier);
+    --print("[COURIER_DEBUG]   Courier state: " .. courierState);
+   
+    -- Only proceed if courier is idle or at base
+    if courierState ~= COURIER_STATE_IDLE and courierState ~= COURIER_STATE_AT_BASE then
+        --print("[COURIER_DEBUG]   Courier busy, skipping");
+        return;
+    end
+   
+    --print("[COURIER_DEBUG]   Attempting TAKE_STASH_ITEMS");
+    local success = bot:ActionImmediate_Courier(courier, COURIER_ACTION_TAKE_STASH_ITEMS);
+    if success then
+        --print("[COURIER_DEBUG]   SUCCESS!");
+        courier.latestUser = bot;
+        lastCourierAction = DotaTime();
+    else        
+        --print("[COURIER_DEBUG]   TAKE_STASH failed, trying TRANSFER_ITEMS");
+        local success2 = bot:ActionImmediate_Courier(courier, COURIER_ACTION_TRANSFER_ITEMS);
+        if success2 then
+            --print("[COURIER_DEBUG]   TRANSFER_ITEMS SUCCESS!");
+            courier.latestUser = bot;
+            lastCourierAction = DotaTime();
+        else
+            --print("[COURIER_DEBUG]   Both commands FAILED! Resetting assignment.");
+            bot.courierAssigned = false;
+        end
+    end
 end
 
 
