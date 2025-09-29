@@ -1,4 +1,5 @@
 /.vscode/*
 /output/*
 hero_selection.lua
-/builds/*
+builds/*
+backups/*
