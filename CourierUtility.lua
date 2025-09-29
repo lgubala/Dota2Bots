@@ -16,7 +16,7 @@ function CourierUtility.GetAvailableCourier(bot)
     local numCouriers = GetNumCouriers()
     if numCouriers == 0 then
         if debugCourier then
-            print("[COURIER_DEBUG] No couriers available")
+            --print("[COURIER_DEBUG] No couriers available")
         end
         return nil
     end
@@ -31,7 +31,7 @@ function CourierUtility.GetAvailableCourier(bot)
             -- This might not be perfectly reliable, so we'll use the first available one
             if debugCourier then
                 local courierState = GetCourierState(courier)
-                print("[COURIER_DEBUG] Player "..playerID.." - Courier "..courierID.." state: "..courierState)
+                --print("[COURIER_DEBUG] Player "..playerID.." - Courier "..courierID.." state: "..courierState)
             end
             return courier
         end
@@ -55,9 +55,9 @@ function CourierUtility.HasItemsInStash(bot)
     end
     
     if debugCourier and itemCount > 0 then
-        print("[COURIER_DEBUG] "..bot:GetUnitName().." has "..itemCount.." items in stash:")
+        --print("[COURIER_DEBUG] "..bot:GetUnitName().." has "..itemCount.." items in stash:")
         for _, itemName in ipairs(itemsFound) do
-            print("[COURIER_DEBUG]   - "..itemName)
+            --print("[COURIER_DEBUG]   - "..itemName)
         end
     end
     
@@ -75,7 +75,7 @@ function CourierUtility.HasInventorySpace(bot)
     end
     
     if debugCourier then
-        print("[COURIER_DEBUG] "..bot:GetUnitName().." has "..freeSlots.." free inventory slots")
+        --print("[COURIER_DEBUG] "..bot:GetUnitName().." has "..freeSlots.." free inventory slots")
     end
     
     return freeSlots > 0, freeSlots
@@ -95,7 +95,7 @@ function CourierUtility.RequestTurboDelivery(bot)
     local hasSpace, freeSlots = CourierUtility.HasInventorySpace(bot)
     if not hasSpace then
         if debugCourier then
-            print("[COURIER_DEBUG] "..bot:GetUnitName().." has no inventory space for delivery")
+            --print("[COURIER_DEBUG] "..bot:GetUnitName().." has no inventory space for delivery")
         end
         return false
     end
@@ -103,7 +103,7 @@ function CourierUtility.RequestTurboDelivery(bot)
     local courier = CourierUtility.GetAvailableCourier(bot)
     if courier == nil then
         if debugCourier then
-            print("[COURIER_DEBUG] "..bot:GetUnitName().." - No courier available for delivery")
+            --print("[COURIER_DEBUG] "..bot:GetUnitName().." - No courier available for delivery")
         end
         return false
     end
@@ -112,7 +112,7 @@ function CourierUtility.RequestTurboDelivery(bot)
     local playerID = bot:GetPlayerID()
     
     if debugCourier then
-        print("[COURIER_DEBUG] "..bot:GetUnitName().." - Attempting delivery, courier state: "..courierState)
+        --print("[COURIER_DEBUG] "..bot:GetUnitName().." - Attempting delivery, courier state: "..courierState)
     end
     
     -- Try multiple delivery methods
@@ -126,12 +126,12 @@ function CourierUtility.RequestTurboDelivery(bot)
         
         if success then
             if debugCourier then
-                print("[COURIER_DEBUG] "..bot:GetUnitName().." - Transfer items command sent successfully")
+                --print("[COURIER_DEBUG] "..bot:GetUnitName().." - Transfer items command sent successfully")
             end
             return true
         else
             if debugCourier then
-                print("[COURIER_DEBUG] "..bot:GetUnitName().." - Transfer items command failed")
+                --print("[COURIER_DEBUG] "..bot:GetUnitName().." - Transfer items command failed")
             end
         end
     end
@@ -144,7 +144,7 @@ function CourierUtility.RequestTurboDelivery(bot)
         
         if retrieveSuccess then
             if debugCourier then
-                print("[COURIER_DEBUG] "..bot:GetUnitName().." - Retrieve items command sent")
+                --print("[COURIER_DEBUG] "..bot:GetUnitName().." - Retrieve items command sent")
             end
             
             -- Schedule a deliver command for a bit later
@@ -152,7 +152,7 @@ function CourierUtility.RequestTurboDelivery(bot)
             return true
         else
             if debugCourier then
-                print("[COURIER_DEBUG] "..bot:GetUnitName().." - Retrieve items command failed")
+                --print("[COURIER_DEBUG] "..bot:GetUnitName().." - Retrieve items command failed")
             end
         end
     end
@@ -165,7 +165,7 @@ function CourierUtility.RequestTurboDelivery(bot)
         end)
         
         if autoDeliverSuccess and debugCourier then
-            print("[COURIER_DEBUG] "..bot:GetUnitName().." - Auto-delivery command attempted")
+            --print("[COURIER_DEBUG] "..bot:GetUnitName().." - Auto-delivery command attempted")
         end
     end
     
@@ -186,7 +186,7 @@ function CourierUtility.ProcessDeliveryRequests()
                 end)
                 
                 if debugCourier then
-                    print("[COURIER_DEBUG] PlayerID "..playerID.." - Delayed delivery attempt: "..tostring(deliverSuccess))
+                    --print("[COURIER_DEBUG] PlayerID "..playerID.." - Delayed delivery attempt: "..tostring(deliverSuccess))
                 end
             end
             
@@ -260,23 +260,23 @@ function CourierUtility.GetCourierDistanceFromBot(bot)
     return GetUnitToUnitDistance(bot, courier)
 end
 
--- Debug function to print courier status
+-- Debug function to --print courier status
 function CourierUtility.DebugCourierStatus(bot)
     if not debugCourier then
         return
     end
     
-    print("[COURIER_DEBUG] === Courier Status for "..bot:GetUnitName().." ===")
-    print("[COURIER_DEBUG] Turbo Mode: "..tostring(CourierUtility.IsTurboMode()))
+    --print("[COURIER_DEBUG] === Courier Status for "..bot:GetUnitName().." ===")
+    --print("[COURIER_DEBUG] Turbo Mode: "..tostring(CourierUtility.IsTurboMode()))
     
     local numCouriers = GetNumCouriers()
-    print("[COURIER_DEBUG] Number of couriers: "..numCouriers)
+    --print("[COURIER_DEBUG] Number of couriers: "..numCouriers)
     
     for courierID = 0, numCouriers - 1 do
         local courier = GetCourier(courierID)
         if courier ~= nil then
             local courierState = GetCourierState(courier)
-            print("[COURIER_DEBUG] Courier "..courierID.." state: "..courierState)
+            --print("[COURIER_DEBUG] Courier "..courierID.." state: "..courierState)
             
             -- Check courier inventory
             local itemCount = 0
@@ -286,17 +286,17 @@ function CourierUtility.DebugCourierStatus(bot)
                     itemCount = itemCount + 1
                 end
             end
-            print("[COURIER_DEBUG] Courier "..courierID.." carrying "..itemCount.." items")
+            --print("[COURIER_DEBUG] Courier "..courierID.." carrying "..itemCount.." items")
         end
     end
     
     local hasStashItems, stashItems = CourierUtility.HasItemsInStash(bot)
-    print("[COURIER_DEBUG] Bot has stash items: "..tostring(hasStashItems))
+    --print("[COURIER_DEBUG] Bot has stash items: "..tostring(hasStashItems))
     
     local hasSpace, freeSlots = CourierUtility.HasInventorySpace(bot)
-    print("[COURIER_DEBUG] Bot inventory space: "..freeSlots.." slots")
+    --print("[COURIER_DEBUG] Bot inventory space: "..freeSlots.." slots")
     
-    print("[COURIER_DEBUG] === End Status ===")
+    --print("[COURIER_DEBUG] === End Status ===")
 end
 
 return CourierUtility

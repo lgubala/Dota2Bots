@@ -808,12 +808,12 @@ function TurboModeCourierThink()
    
     -- DEBUG PRINTS
     local teamName = (GetTeam() == TEAM_RADIANT) and "RADIANT" or "DIRE";
-    print("[COURIER_DEBUG] " .. teamName .. " - " .. bot:GetUnitName() .. " needs courier");
-    print("[COURIER_DEBUG]   Stash value: " .. stashValue);
+    -print("[COURIER_DEBUG] " .. teamName .. " - " .. bot:GetUnitName() .. " needs courier");
+    --print("[COURIER_DEBUG]   Stash value: " .. stashValue);
    
     -- Avoid spamming courier commands
     if DotaTime() < lastCourierAction + 8.0 then
-        print("[COURIER_DEBUG]   Waiting for action cooldown");
+        --print("[COURIER_DEBUG]   Waiting for action cooldown");
         return;
     end
    
@@ -822,7 +822,7 @@ function TurboModeCourierThink()
         local tm = GetTeam();
         local pIDs = GetTeamPlayers(tm);
         
-        print("[COURIER_DEBUG]   Team has " .. #pIDs .. " players");
+        --print("[COURIER_DEBUG]   Team has " .. #pIDs .. " players");
                
         -- Find which position this bot is in the team
         for i = 1, #pIDs do
@@ -832,7 +832,7 @@ function TurboModeCourierThink()
                     -- Assign courier ID based on team member position
                     bot.courierID = i - 1;
                     bot.courierAssigned = true;
-                    print("[COURIER_DEBUG]   Assigned courierID: " .. bot.courierID .. " (team pos: " .. i .. ")");
+                    --print("[COURIER_DEBUG]   Assigned courierID: " .. bot.courierID .. " (team pos: " .. i .. ")");
                     break;
                 end
             end
