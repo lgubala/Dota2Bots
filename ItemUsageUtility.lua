@@ -1071,10 +1071,12 @@ end
 
 --item_moon_shard
 ItemUsageModule.Use['item_moon_shard'] = function(item, bot, mode, extra_range)
-	if bot:HasModifier("modifier_item_moon_shard_consumed") == false
-	then
-		return BOT_ACTION_DESIRE_ABSOLUTE, bot, 'unit';
-	end
+    -- Only consume if we DON'T already have the consumed buff
+    if not bot:HasModifier("modifier_item_moon_shard_consumed") then
+        return BOT_ACTION_DESIRE_ABSOLUTE, bot, 'unit';
+    end
+    
+    return BOT_ACTION_DESIRE_NONE;
 end
 
 --item_phase_boots

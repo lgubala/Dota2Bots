@@ -545,7 +545,7 @@ X["hero_roles"] = {
 	},
 
 	["npc_dota_hero_bounty_hunter"] = {
-		['carry'] = 0,
+		['carry'] = 2,
 		['disabler'] = 0,
 		['durable'] = 0,
 		['escape'] = 2,
