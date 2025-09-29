@@ -1,370 +1,380 @@
-if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion()  then
-	return;
+if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion() then
+    return;
 end
-
 
 local ability_item_usage_generic = dofile( GetScriptDirectory().."/ability_item_usage_generic" )
 local utils = require(GetScriptDirectory() ..  "/util")
-local mutil = require(GetScriptDirectory() ..  "/MyUtility")
-
+local mutils = require(GetScriptDirectory() ..  "/MyUtility")
 
 function AbilityLevelUpThink()  
-	ability_item_usage_generic.AbilityLevelUpThink(); 
+    ability_item_usage_generic.AbilityLevelUpThink(); 
 end
 function BuybackUsageThink()
-	ability_item_usage_generic.BuybackUsageThink();
+    ability_item_usage_generic.BuybackUsageThink();
 end
 function CourierUsageThink()
-	ability_item_usage_generic.CourierUsageThink();
+    ability_item_usage_generic.CourierUsageThink();
 end
 function ItemUsageThink()
-	ability_item_usage_generic.ItemUsageThink();
+    ability_item_usage_generic.ItemUsageThink();
 end
 
-local castOODesire = 0;
-local castFBDesire = 0;
-local castTDDesire = 0;
-local castPNDesire = 0;
+local bot = GetBot();
 
-local abilityOO = nil;
-local abilityTD = nil;
-local abilityFB = nil;
-local abilityPN = nil;
+local abilityQ = nil; -- Split Earth
+local abilityW = nil; -- Diabolic Edict
+local abilityE = nil; -- Lightning Storm
+local abilityR = nil; -- Pulse Nova
+local abilityScepter = nil; -- Nihilism (Greater Lightning Storm)
 
-local npcBot = nil;
+local castQDesire = 0;
+local castWDesire = 0;
+local castEDesire = 0;
+local castRDesire = 0;
+local castScepterDesire = 0;
 
-local splitEarthLoc = nil;
-local skUse = false;
+-- Pulse Nova management
+local lastNovaToggleTime = 0;
+local novaToggleCooldown = 1.0;
 
 function AbilityUsageThink()
+    
+    if mutils.CanNotUseAbility(bot) then return end
+    
+    -- CHANNELING PROTECTION
+    if mutils.SafeIsChanneling(bot) then
+        return;
+    end
 
-	if npcBot == nil then npcBot = GetBot(); end
-	
-	if abilityOO == nil then abilityOO = npcBot:GetAbilityByName( "leshrac_split_earth" ) end
-	if abilityTD == nil then abilityTD = npcBot:GetAbilityByName( "leshrac_diabolic_edict" ) end
-	if abilityFB == nil then abilityFB = npcBot:GetAbilityByName( "leshrac_lightning_storm" ) end
-	if abilityPN == nil then abilityPN = npcBot:GetAbilityByName( "leshrac_pulse_nova" ) end
-		
-	local radius = abilityOO:GetSpecialValueInt( "radius" );
+    -- Initialize abilities by name
+    if abilityQ == nil then abilityQ = bot:GetAbilityByName("leshrac_split_earth"); end
+    if abilityW == nil then abilityW = bot:GetAbilityByName("leshrac_diabolic_edict"); end
+    if abilityE == nil then abilityE = bot:GetAbilityByName("leshrac_lightning_storm"); end
+    if abilityR == nil then abilityR = bot:GetAbilityByName("leshrac_pulse_nova"); end
+    if abilityScepter == nil then abilityScepter = bot:GetAbilityByName("leshrac_greater_lightning_storm"); end
 
-	if abilityOO:IsInAbilityPhase() and not IsThereHeroWithinRadius(splitEarthLoc, radius) 
-	   and not skUse and npcBot:GetActiveMode() ~= BOT_MODE_ROSHAN 
-	then
-		npcBot:Action_ClearActions(true);
-		return
-	end 	
-		
-	-- Check if we're already using an ability
-	if mutil.CanNotUseAbility(npcBot) then return end
+    -- Consider using each ability
+    castScepterDesire = ConsiderNihilism();
+    castWDesire = ConsiderDiabolicEdict();
+    castQDesire, castQLocation = ConsiderSplitEarth();
+    castEDesire, castETarget = ConsiderLightningStorm();
+    castRDesire = ConsiderPulseNova();
 
-	-- Consider using each ability
-	castOODesire, castOOLocation = ConsiderOverwhelmingOdds();
-	castFBDesire, castFBTarget = ConsiderFireblast();
-	castTDDesire = ConsiderTimeDilation();
-	castPNONDesire = ConsiderPulseNovaOn();
-	castPNOFFDesire = ConsiderPulseNovaOff();
+    -- Priority: Scepter buff > Edict > Stun > Lightning > Pulse Nova toggle
+    if castScepterDesire > 0 then
+        bot:Action_UseAbility(abilityScepter);
+        return;
+    end
 
-	if ( castOODesire > 0 ) 
-	then	
-		splitEarthLoc = castOOLocation;
-		npcBot:Action_UseAbilityOnLocation( abilityOO, castOOLocation );
-		return;
-	end
-	
-	if ( castFBDesire > 0 ) 
-	then
-		npcBot:Action_UseAbilityOnEntity( abilityFB, castFBTarget );
-		return;
-	end
-	
-	if ( castTDDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilityTD );
-		return;
-	end
-	
-	if ( castPNONDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilityPN );
-		return;
-	end
-	
-	if ( castPNOFFDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilityPN );
-		return;
-	end
-	
+    if castWDesire > 0 then
+        bot:Action_UseAbility(abilityW);
+        return;
+    end
 
+    if castQDesire > 0 then
+        bot:Action_UseAbilityOnLocation(abilityQ, castQLocation);
+        return;
+    end
+
+    if castEDesire > 0 then
+        bot:Action_UseAbilityOnEntity(abilityE, castETarget);
+        return;
+    end
+
+    if castRDesire > 0 then
+        bot:Action_UseAbility(abilityR);
+        return;
+    end
 end
 
-function IsThereHeroWithinRadius(vLoc, nRadius)
-	local units = npcBot:GetNearbyHeroes(1600, true, BOT_MODE_NONE)
-	for _,u in pairs(units) do
-		if GetUnitToLocationDistance(u, vLoc) < nRadius then
-			return true;
-		end
-	end
-	return false;
+function ConsiderSplitEarth()
+    if not mutils.CanBeCast(abilityQ) then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
+
+    local nCastRange = math.min(abilityQ:GetCastRange(), 1600);
+    local nRadius = abilityQ:GetSpecialValueInt("radius");
+    local nDelay = abilityQ:GetSpecialValueFloat("delay");
+    local nCastPoint = abilityQ:GetCastPoint();
+    local totalDelay = nCastPoint + nDelay;
+    
+    local enemies = bot:GetNearbyHeroes(math.min(nCastRange + 200, 1600), true, BOT_MODE_NONE);
+
+    -- INTERRUPT: Channeling enemies (HIGHEST PRIORITY)
+    for _, enemy in pairs(enemies) do
+        if mutils.SafeIsChanneling(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+            return BOT_ACTION_DESIRE_VERYHIGH, enemy:GetLocation();
+        end
+    end
+
+    -- INTERRUPT: Teleporting enemies
+    for _, enemy in pairs(enemies) do
+        if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+            if enemy:HasModifier("modifier_teleporting") then
+                return BOT_ACTION_DESIRE_VERYHIGH, enemy:GetLocation();
+            end
+        end
+    end
+
+    -- SHARD DEFENSE: Place in front of towers when defending (with shard)
+    if bot:HasModifier("modifier_item_aghanims_shard") and mutils.IsDefending(bot) then
+        local towers = bot:GetNearbyTowers(1200, false);
+        if #towers > 0 then
+            local tower = towers[1];
+            local towerLoc = tower:GetLocation();
+            -- Find enemies approaching tower
+            for _, enemy in pairs(enemies) do
+                if mutils.IsValidTarget(enemy) then
+                    local enemyToTowerDist = GetUnitToLocationDistance(enemy, towerLoc);
+                    if enemyToTowerDist < 800 then
+                        -- Place between tower and enemies
+                        local defenseLoc = tower:GetXUnitsTowardsLocation(enemy:GetLocation(), 400);
+                        return BOT_ACTION_DESIRE_HIGH, defenseLoc;
+                    end
+                end
+            end
+        end
+    end
+
+    -- TEAMFIGHT: Multi-target stun
+    if mutils.IsInTeamFight(bot, 1200) then
+        local locationAoE = bot:FindAoELocation(true, true, bot:GetLocation(), nCastRange, nRadius, totalDelay, 0);
+        if locationAoE.count >= 2 then
+            return BOT_ACTION_DESIRE_HIGH, locationAoE.targetloc;
+        end
+    end
+
+    -- OFFENSIVE: Going on someone
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) then
+            -- Don't stun if already stunned
+            if not target:IsStunned() then
+                return BOT_ACTION_DESIRE_MODERATE, target:GetExtrapolatedLocation(totalDelay);
+            end
+        end
+    end
+
+    -- DEFENSIVE: Stun when retreating
+    if mutils.IsRetreating(bot) then
+        for _, enemy in pairs(enemies) do
+            if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+                if mutils.SafeWasRecentlyDamaged(bot, 2.0) then
+                    return BOT_ACTION_DESIRE_MODERATE, enemy:GetLocation();
+                end
+            end
+        end
+    end
+
+    return BOT_ACTION_DESIRE_NONE, nil;
 end
 
-function ConsiderOverwhelmingOdds()
+function ConsiderDiabolicEdict()
+    if not mutils.CanBeCast(abilityW) then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
-	-- Make sure it's castable
-	if ( not abilityOO:IsFullyCastable() ) 
-	then 
-		return BOT_ACTION_DESIRE_NONE, 0;
-	end
+    local nRadius = abilityW:GetSpecialValueInt("radius");
+    local enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
 
+    -- PUSHING: Use when attacking towers (HIGHEST PRIORITY for Leshrac)
+    if mutils.IsPushing(bot) then
+        local towers = bot:GetNearbyTowers(nRadius, true);
+        if #towers > 0 then
+            return BOT_ACTION_DESIRE_VERYHIGH;
+        end
+    end
 
-	-- Get some of its values
-	local nRadius = abilityOO:GetSpecialValueInt( "radius" );
-	local nCastRange = abilityOO:GetCastRange();
-	local nAttackRange = npcBot:GetAttackRange();
-	local nCastPoint = abilityOO:GetCastPoint( ) + abilityOO:GetSpecialValueFloat( "delay" );
-	local nDamage = abilityOO:GetAbilityDamage();
-	
-	local skThere, skLoc = mutil.IsSandKingThere(npcBot, nCastRange+200, 2.0);
-	
-	if skThere then
-		skUse = true;
-		return BOT_ACTION_DESIRE_MODERATE, skLoc;
-	end
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nCastRange, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) 
-			then
-				skUse = false;
-				return BOT_ACTION_DESIRE_MODERATE, npcEnemy:GetLocation();
-			end
-		end
-	end
-	
-	if ( npcBot:GetActiveMode() == BOT_MODE_ROSHAN  ) 
-	then
-		local npcTarget = mutil.SafeGetAttackTarget(npcBot);
-		if ( mutil.IsRoshan(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange)  )
-		then
-			skUse = false;
-			return BOT_ACTION_DESIRE_LOW, npcTarget:GetLocation();
-		end
-	end
-	
-	if mutil.IsInTeamFight(npcBot, 1200)
-	then
-		local locationAoE = npcBot:FindAoELocation( true, true, npcBot:GetLocation(), nAttackRange, nRadius, nCastPoint, 0 );
-		if ( locationAoE.count >= 2 ) then
-			skUse = false;
-			return BOT_ACTION_DESIRE_LOW, locationAoE.targetloc;
-		end
-	end
-	
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnNonMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nAttackRange+200)
-		then
-			skUse = false;
-			return BOT_ACTION_DESIRE_MODERATE, npcTarget:GetExtrapolatedLocation( nCastPoint );
-		end
-	end
---
-	return BOT_ACTION_DESIRE_NONE, 0;
+    -- DEFENDING: Use when enemies attacking our towers
+    if mutils.IsDefending(bot) then
+        local towers = bot:GetNearbyTowers(nRadius, false);
+        if #towers > 0 and #enemies > 0 then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
+
+    -- TEAMFIGHT: Multi-target damage
+    if mutils.IsInTeamFight(bot, 1200) then
+        if #enemies >= 2 then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
+
+    -- OFFENSIVE: Going on someone
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) then
+            local distance = GetUnitToUnitDistance(bot, target);
+            if distance < nRadius then
+                return BOT_ACTION_DESIRE_MODERATE;
+            end
+        end
+    end
+
+    -- DEFENSIVE: Use when retreating with enemies nearby
+    if mutils.IsRetreating(bot) then
+        if #enemies > 0 and mutils.SafeWasRecentlyDamaged(bot, 2.0) then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+
+    return BOT_ACTION_DESIRE_NONE;
 end
 
-function ConsiderTimeDilation()
+function ConsiderLightningStorm()
+    if not mutils.CanBeCast(abilityE) then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
 
-	-- Make sure it's castable
-	if ( not abilityTD:IsFullyCastable() ) 
-	then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-	
-	-- Get some of its values
-	local nRadius = abilityTD:GetSpecialValueInt("radius");
+    local nCastRange = math.min(abilityE:GetCastRange(), 1600);
+    local nDamage = abilityE:GetSpecialValueInt("damage");
+    local manaPercent = bot:GetMana() / bot:GetMaxMana();
+    local enemies = bot:GetNearbyHeroes(math.min(nCastRange + 200, 1600), true, BOT_MODE_NONE);
 
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nRadius, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE;
-			end
-		end
-	end
-	
-	if ( npcBot:GetActiveMode() == BOT_MODE_ROSHAN  ) 
-	then
-		local npcTarget = mutil.SafeGetAttackTarget(npcBot);
-		if ( mutil.IsRoshan(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nRadius)  )
-		then
-			return BOT_ACTION_DESIRE_LOW;
-		end
-	end
-	
-	if mutil.IsInTeamFight(npcBot, 1200)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nRadius, true, BOT_MODE_NONE );
-		if (tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes >= 1) then
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-	
-	if  mutil.IsDefending(npcBot) or mutil.IsPushing(npcBot)
-	then
-		local tableNearbyEnemyCreeps = npcBot:GetNearbyCreeps( nRadius, true );
-		local tableNearbyEnemyTowers = npcBot:GetNearbyTowers( nRadius, true );
-		if ( tableNearbyEnemyCreeps ~= nil and #tableNearbyEnemyCreeps >= 4 and npcBot:GetMana() / npcBot:GetMaxMana() > 0.65 ) or
-		   ( tableNearbyEnemyTowers ~= nil and #tableNearbyEnemyTowers >= 1 )
-		then
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-	
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nRadius)
-		then
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-	
---
-	return BOT_ACTION_DESIRE_NONE;
+    -- LAST HIT: Secure kills on low HP enemies
+    for _, enemy in pairs(enemies) do
+        if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+            local enemyHealth = mutils.SafeGetHealth(enemy);
+            local actualDamage = enemy:GetActualIncomingDamage(nDamage, DAMAGE_TYPE_MAGICAL);
+            if enemyHealth > 0 and enemyHealth <= actualDamage then
+                return BOT_ACTION_DESIRE_VERYHIGH, enemy;
+            end
+        end
+    end
+
+    -- TEAMFIGHT: Use in fights
+    if mutils.IsInTeamFight(bot, 1200) then
+        for _, enemy in pairs(enemies) do
+            if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+                return BOT_ACTION_DESIRE_HIGH, enemy;
+            end
+        end
+    end
+
+    -- HARASSMENT: Spam on enemies in lane
+    if manaPercent > 0.4 then
+        for _, enemy in pairs(enemies) do
+            if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+                return BOT_ACTION_DESIRE_HIGH, enemy;
+            end
+        end
+    end
+
+    -- OFFENSIVE: Going on someone
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) then
+            return BOT_ACTION_DESIRE_HIGH, target;
+        end
+    end
+
+    -- FARMING: Use on creeps if good mana
+    if (mutils.IsPushing(bot) or mutils.IsDefending(bot)) and manaPercent > 0.6 then
+        local creeps = bot:GetNearbyLaneCreeps(nCastRange, true);
+        if #creeps >= 3 then
+            return BOT_ACTION_DESIRE_MODERATE, creeps[1];
+        end
+    end
+
+    return BOT_ACTION_DESIRE_NONE, nil;
 end
 
+function ConsiderPulseNova()
+    if abilityR == nil or not abilityR:IsTrained() or not abilityR:IsFullyCastable() then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
-function ConsiderFireblast()
+    -- Don't spam toggle
+    if DotaTime() - lastNovaToggleTime < novaToggleCooldown then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
-	-- Make sure it's castable
-	if ( not abilityFB:IsFullyCastable() ) then 
-		return BOT_ACTION_DESIRE_NONE, 0;
-	end
+    local nRadius = abilityR:GetSpecialValueInt("radius");
+    local nManaPerSecond = abilityR:GetSpecialValueInt("mana_cost_per_second");
+    local manaPercent = bot:GetMana() / bot:GetMaxMana();
+    local isActive = bot:HasModifier("modifier_leshrac_pulse_nova");
+    
+    local enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
 
+    -- TURN OFF: Low mana or no enemies nearby
+    if isActive then
+        -- Turn off if low mana
+        if manaPercent < 0.25 then
+            lastNovaToggleTime = DotaTime();
+            return BOT_ACTION_DESIRE_VERYHIGH;
+        end
+        
+        -- Turn off if no enemies nearby
+        if #enemies == 0 and not mutils.IsGoingOnSomeone(bot) then
+            lastNovaToggleTime = DotaTime();
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+        
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
-	-- Get some of its values
-	local nCastRange = abilityFB:GetCastRange();
-	local nRadius = 0;
-	local nDamage = abilityFB:GetAbilityDamage()
+    -- TURN ON conditions:
+    
+    -- TEAMFIGHT: Turn on for teamfights
+    if mutils.IsInTeamFight(bot, 1200) and #enemies >= 1 and manaPercent > 0.3 then
+        lastNovaToggleTime = DotaTime();
+        return BOT_ACTION_DESIRE_HIGH;
+    end
 
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nCastRange, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) and mutil.CanCastOnNonMagicImmune(npcEnemy) ) 
-			then
-				return BOT_ACTION_DESIRE_HIGH, npcEnemy;
-			end
-		end
-	end
+    -- OFFENSIVE: Turn on when going on someone
+    if mutils.IsGoingOnSomeone(bot) and manaPercent > 0.4 then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) then
+            local distance = GetUnitToUnitDistance(bot, target);
+            if distance < nRadius + 200 then
+                lastNovaToggleTime = DotaTime();
+                return BOT_ACTION_DESIRE_HIGH;
+            end
+        end
+    end
 
-	-- If we're pushing or defending a lane and can hit 4+ creeps, go for it
-	if ( mutil.IsDefending(npcBot) or mutil.IsPushing(npcBot) ) and npcBot:GetMana()/npcBot:GetMaxMana() > 0.65 
-	then
-		local tableNearbyEnemyCreeps = npcBot:GetNearbyLaneCreeps( nCastRange, true );
-		if tableNearbyEnemyCreeps ~= nil and #tableNearbyEnemyCreeps >= 3 and tableNearbyEnemyCreeps[1] ~= nil 
-		then
-			return BOT_ACTION_DESIRE_HIGH, tableNearbyEnemyCreeps[1];
-		end
-	end
-	
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnNonMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange+200)
-		then
-			return BOT_ACTION_DESIRE_HIGH, npcTarget;
-		end
-	end
-	
-	return BOT_ACTION_DESIRE_NONE, 0;
+    -- FARMING: Turn on for farming if high mana
+    if (mutils.IsPushing(bot) or mutils.IsDefending(bot)) and manaPercent > 0.7 then
+        local creeps = bot:GetNearbyLaneCreeps(nRadius, true);
+        if #creeps >= 4 then
+            lastNovaToggleTime = DotaTime();
+            return BOT_ACTION_DESIRE_LOW;
+        end
+    end
 
+    return BOT_ACTION_DESIRE_NONE;
 end
 
-function ConsiderPulseNovaOn()
+function ConsiderNihilism()
+    -- Check if we have scepter
+    if not bot:HasScepter() or abilityScepter == nil or not abilityScepter:IsFullyCastable() then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
+    local nRadius = 500; -- Nihilism radius
+    local enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
 
-	if ( not abilityPN:IsFullyCastable() ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-	
-	if npcBot:HasModifier("modifier_leshrac_pulse_nova") then
-		return BOT_ACTION_DESIRE_NONE;
-	end
-	
-	local nRadius = abilityPN:GetSpecialValueInt("radius")
-	local nDamage = abilityPN:GetSpecialValueInt("damage")
-	
-	
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nRadius, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) and mutil.CanCastOnNonMagicImmune(npcEnemy)  ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE;
-			end
-		end
-	end
-	
-	if mutil.IsInTeamFight(npcBot, 1200)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nRadius, true, BOT_MODE_NONE );
-		if (tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes >= 2) then
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
-	
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnNonMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nRadius)
-		then
-			return BOT_ACTION_DESIRE_HIGH;
-		end
-	end
-	
-	
-	return BOT_ACTION_DESIRE_NONE;
-end
+    -- TEAMFIGHT: Use in big teamfights for magic amp
+    if mutils.IsInTeamFight(bot, 1200) then
+        if #enemies >= 2 then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
 
-function ConsiderPulseNovaOff()
-	
-	if ( not abilityPN:IsFullyCastable() ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-	
-	if not npcBot:HasModifier("modifier_leshrac_pulse_nova") then
-		return BOT_ACTION_DESIRE_NONE;
-	end
-	
-	local nRadius = abilityPN:GetSpecialValueInt("radius")
-	
-	local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nRadius, true, BOT_MODE_NONE );
-	if (tableNearbyEnemyHeroes == nil or #tableNearbyEnemyHeroes == 0) then
-		return BOT_ACTION_DESIRE_MODERATE;
-	end
-	
-	return BOT_ACTION_DESIRE_NONE;
+    -- DEFENSIVE: Use when low HP and retreating
+    if mutils.IsRetreating(bot) then
+        local healthPercent = bot:GetHealth() / bot:GetMaxHealth();
+        if healthPercent < 0.4 and #enemies >= 1 then
+            return BOT_ACTION_DESIRE_VERYHIGH;
+        end
+    end
+
+    -- OFFENSIVE: Use when going on someone with multiple enemies nearby
+    if mutils.IsGoingOnSomeone(bot) then
+        if #enemies >= 2 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+
+    return BOT_ACTION_DESIRE_NONE;
 end
