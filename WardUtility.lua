@@ -150,7 +150,7 @@ end
 function X.GetItemWard(bot)
 	for i = 0,8 do
 		local item = bot:GetItemInSlot(i);
-		if item ~= nil and (item:GetName() == 'item_ward_observer' or item:GetName() == 'item_ward_sentry' or item:GetName() == 'item_ward_dispenser') then  
+		if item ~= nil and (item:GetName() == 'item_ward_observer' or item:GetName() == 'item_ward_sentry' ) then  
 			return item;
 		end
 	end

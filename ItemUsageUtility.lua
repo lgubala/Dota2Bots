@@ -1753,7 +1753,7 @@ ItemUsageModule.Use['item_harpoon'] = function(item, bot, mode, extra_range)
 end
 
 --item_ward_dispenser
-ItemUsageModule.Use['item_ward_dispenser'] = function(item, bot, mode, extra_range)
+ItemUsageModule.Use['item_disperser'] = function(item, bot, mode, extra_range)
 	
 	local nCastRange = 600 + extra_range;
 	

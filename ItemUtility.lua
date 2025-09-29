@@ -194,7 +194,7 @@ ItemModule["basic_items"] = {
 	"item_tiara_of_selemene",
 	"item_devastator",
 	"item_pavise",
-	"item_ward_dispenser",
+	"item_disperser",
 	"item_angels_demise",
 	"item_phylactery",
 	"item_orb_of_frost"
@@ -203,7 +203,7 @@ ItemModule["basic_items"] = {
 ItemModule["item_angels_demise"] = { "item_phylactery"; "item_lesser_crit"; "item_recipe_angels_demise"; }
 
 
-ItemModule["item_ward_dispenser"] = { "item_diffusal_blade"; "item_eagle"; "item_recipe_ward_dispenser"; }
+ItemModule["item_disperser"] = { "item_diffusal_blade"; "item_eagle"; "item_recipe_disperser"; }
 
 
 ItemModule["item_pavise"] = { "item_energy_booster"; "item_ring_of_protection"; "item_fluffy_hat"; "item_recipe_pavise" }
