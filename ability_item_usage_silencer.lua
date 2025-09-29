@@ -245,7 +245,7 @@ function ConsiderLastWord()
     -- PREVENT ESCAPES: Target enemies trying to cast or escape
     for _, enemy in pairs(enemies) do
         if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
-            if enemy:IsRetreating() or enemy:IsCastingAbility() then
+            if enemy:IsCastingAbility() then
                 return BOT_ACTION_DESIRE_HIGH, enemy;
             end
         end
