@@ -68,7 +68,6 @@ local UnImplementedHeroes = {
 	'npc_dota_hero_dazzle',
 	'npc_dota_hero_furion',
 	'npc_dota_hero_hoodwink',
-	'npc_dota_hero_keeper_of_the_light',
 	'npc_dota_hero_lone_druid',
 	'npc_dota_hero_marci',
 	'npc_dota_hero_medusa',
@@ -78,7 +77,6 @@ local UnImplementedHeroes = {
 	'npc_dota_hero_primal_beast',
 	'npc_dota_hero_snapfire',
 	'npc_dota_hero_tinker',
-	'npc_dota_hero_troll_warlord',
 	'npc_dota_hero_venomancer',
 	'npc_dota_hero_visage',
 	'npc_dota_hero_void_spirit'
@@ -89,7 +87,7 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_dragon_knight'
+    
 }
 
 local direHeroList = {
@@ -149,6 +147,7 @@ local allBotHeroes = {
 	'npc_dota_hero_invoker',
 	'npc_dota_hero_jakiro',
 	'npc_dota_hero_juggernaut',
+	'npc_dota_hero_keeper_of_the_light',
 	'npc_dota_hero_kunkka',
 	'npc_dota_hero_legion_commander',
 	'npc_dota_hero_leshrac',
@@ -202,6 +201,7 @@ local allBotHeroes = {
 	'npc_dota_hero_tidehunter',
 	'npc_dota_hero_tiny',
 	'npc_dota_hero_treant',
+	'npc_dota_hero_troll_warlord',
 	'npc_dota_hero_tusk',
 	'npc_dota_hero_undying',
 	'npc_dota_hero_ursa',

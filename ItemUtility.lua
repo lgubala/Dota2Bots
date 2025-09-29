@@ -402,7 +402,7 @@ ItemModule["item_meteor_hammer"] = { "item_crown"; "item_kaya"; "item_recipe_met
 --aeon disk
 ItemModule["item_aeon_disk"] = { "item_vitality_booster"; "item_energy_booster"; "item_recipe_aeon_disk" }
 
-ItemModule["item_spirit_vessel"] = { "item_urn_of_shadows"; "item_vitality_booster"; "item_recipe_spirit_vessel" }
+ItemModule["item_spirit_vessel"] = { "item_urn_of_shadows"; "item_diadem"; "item_recipe_spirit_vessel" }
 
 ItemModule["item_nullifier"] = { "item_helm_of_iron_will"; "item_relic" }
 --kaya
