@@ -8,8 +8,8 @@ local talents = IBUtil.FillTalenTable(npcBot);
 X["items"] = {
 	"item_quelling_blade",
 	"item_power_treads_agi",
-	"item_lifesteal",
 	"item_bfury",
+	"item_lifesteal",
 	"item_aghanims_shard",
 	"item_sange_and_yasha",
 	"item_black_king_bar",

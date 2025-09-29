@@ -68,7 +68,6 @@ local UnImplementedHeroes = {
 	'npc_dota_hero_dazzle',
 	'npc_dota_hero_furion',
 	'npc_dota_hero_hoodwink',
-	'npc_dota_hero_keeper_of_the_light',
 	'npc_dota_hero_lone_druid',
 	'npc_dota_hero_marci',
 	'npc_dota_hero_medusa',
@@ -88,17 +87,11 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_mars',
-    'npc_dota_hero_kunkka',
-    'npc_dota_hero_razor',
-    'npc_dota_hero_disruptor'
+    
 }
 
 local direHeroList = {
-    'npc_dota_hero_ember_spirit',
-    'npc_dota_hero_axe',
-    'npc_dota_hero_troll_warlord',
-    'npc_dota_hero_silencer'
+    
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------
@@ -154,6 +147,7 @@ local allBotHeroes = {
 	'npc_dota_hero_invoker',
 	'npc_dota_hero_jakiro',
 	'npc_dota_hero_juggernaut',
+	'npc_dota_hero_keeper_of_the_light',
 	'npc_dota_hero_kunkka',
 	'npc_dota_hero_legion_commander',
 	'npc_dota_hero_leshrac',

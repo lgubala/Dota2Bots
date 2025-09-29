@@ -105,34 +105,46 @@ function ConsiderSwitchStance()
     local enemies = bot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
     local inMelee = IsInMeleeForm();
     
-    -- LANING: Prefer ranged form for farming and harassment
-    if bot:GetActiveMode() == BOT_MODE_LANING then
-        if inMelee and #enemies <= 1 then
-            return BOT_ACTION_DESIRE_MODERATE; -- Switch to ranged for farming
+    -- CRITICAL: After using ranged axes, immediately switch back to melee for fighting
+    if IsInRangedForm() and (mutils.IsGoingOnSomeone(bot) or mutils.IsInTeamFight(bot, 1200)) and #enemies > 0 then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) then
+            local distanceToTarget = GetUnitToUnitDistance(target, bot);
+            -- If we can reach them in melee, switch immediately
+            if distanceToTarget <= 500 then
+                return BOT_ACTION_DESIRE_VERYHIGH;
+            end
         end
     end
     
-    -- FIGHTING: Smart stance switching based on situation
+    -- LANING: Prefer ranged form for farming when no close enemies
+    if bot:GetActiveMode() == BOT_MODE_LANING then
+        if inMelee and #enemies == 0 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    -- FIGHTING: Prefer melee form in combat
     if mutils.IsGoingOnSomeone(bot) or mutils.IsInTeamFight(bot, 1200) then
         local target = bot:GetTarget();
         
         if mutils.IsValidTarget(target) then
             local distanceToTarget = GetUnitToUnitDistance(target, bot);
             
-            -- Switch to melee when close enough to attack and root
-            if distanceToTarget <= 400 and not inMelee then
-                return BOT_ACTION_DESIRE_HIGH;
+            -- Switch to melee when close enough (prioritize melee)
+            if distanceToTarget <= 500 and not inMelee then
+                return BOT_ACTION_DESIRE_VERYHIGH;
             end
             
-            -- Switch to ranged when target is far or we can't reach
-            if distanceToTarget > 600 and inMelee then
-                return BOT_ACTION_DESIRE_HIGH;
+            -- Only switch to ranged if target is very far
+            if distanceToTarget > 700 and inMelee then
+                return BOT_ACTION_DESIRE_MODERATE;
             end
         end
         
-        -- Default to melee in teamfights for better DPS and root chance
-        if mutils.IsInTeamFight(bot, 800) and not inMelee then
-            return BOT_ACTION_DESIRE_MODERATE;
+        -- Default to melee in any teamfight
+        if not inMelee and #enemies > 0 then
+            return BOT_ACTION_DESIRE_HIGH;
         end
     end
     
@@ -143,15 +155,15 @@ function ConsiderSwitchStance()
     
     -- PUSHING: Use ranged for tower siege
     if mutils.IsPushing(bot) and inMelee then
-        local towers = bot:GetNearbyTowers(800, true);
+        local towers = bot:GetNearbyTowers(900, true);
         if #towers > 0 then
             return BOT_ACTION_DESIRE_MODERATE;
         end
     end
     
-    -- DEFAULT: Stay in ranged when no enemies around
-    if #enemies == 0 and inMelee then
-        return BOT_ACTION_DESIRE_LOW;
+    -- DEFAULT: Prefer melee form when enemies nearby
+    if #enemies > 0 and not inMelee then
+        return BOT_ACTION_DESIRE_MODERATE;
     end
     
     return BOT_ACTION_DESIRE_NONE;
