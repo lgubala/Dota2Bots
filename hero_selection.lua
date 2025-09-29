@@ -87,7 +87,7 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_bristleback'
+    'npc_dota_hero_tusk'
 }
 
 local direHeroList = {
