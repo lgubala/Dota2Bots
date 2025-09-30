@@ -436,6 +436,9 @@ function ConsiderBlackHole()
 	-- EMERGENCY: If retreating and low HP
 	if mutil.IsRetreating(npcBot) and npcBot:GetHealth() < 0.4 * npcBot:GetMaxHealth()
 	then
+		-- DEFINE the variable first!
+		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes(math.min(nRadius + 200, 1600), true, BOT_MODE_NONE);
+		
 		if #tableNearbyEnemyHeroes >= 2 then
 			--print("[ENIGMA] EMERGENCY Black Hole - " .. #tableNearbyEnemyHeroes .. " enemies while retreating");
 			return BOT_ACTION_DESIRE_VERYHIGH, tableNearbyEnemyHeroes[1]:GetLocation();

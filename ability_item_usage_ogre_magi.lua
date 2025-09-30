@@ -367,8 +367,19 @@ function ConsiderFireShield()
         local towers = bot:GetNearbyTowers(math.min(nCastRange + 200, 1600), false);
         for _, tower in pairs(towers) do
             if not tower:HasModifier("modifier_ogre_magi_smash_buff") then
-                local enemies = tower:GetNearbyHeroes(800, true, BOT_MODE_NONE);
-                if #enemies > 0 then
+                -- FIXED: Use bot to get nearby heroes, not tower
+                local towerLoc = tower:GetLocation();
+                local allEnemies = bot:GetNearbyHeroes(math.min(nCastRange + 800, 1600), true, BOT_MODE_NONE);
+                
+                -- Count enemies near the tower
+                local enemiesNearTower = 0;
+                for _, enemy in pairs(allEnemies) do
+                    if GetUnitToLocationDistance(enemy, towerLoc) <= 800 then
+                        enemiesNearTower = enemiesNearTower + 1;
+                    end
+                end
+                
+                if enemiesNearTower > 0 then
                     return BOT_ACTION_DESIRE_MODERATE, tower;
                 end
             end
