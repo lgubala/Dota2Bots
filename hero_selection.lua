@@ -87,11 +87,17 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_treant'
+    'npc_dota_hero_windrunner',
+    'npc_dota_hero_leshrac',
+    'npc_dota_hero_bristleback',
+    'npc_dota_hero_mirana'
 }
 
 local direHeroList = {
-    
+    'npc_dota_hero_lina',
+    'npc_dota_hero_slardar',
+    'npc_dota_hero_disruptor',
+    'npc_dota_hero_luna'
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------

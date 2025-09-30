@@ -8,12 +8,15 @@ X["items"] = {
 	"item_magic_wand",
 	"item_arcane_boots",
 	"item_blade_mail",
-	"item_pipe",
-	"item_black_king_bar",
+	"item_aghanims_shard",
+	"item_sange",
+	"item_ultimate_scepter",
 	"item_heart",
-	"item_guardian_greaves",
+	"item_octarine_core",
 	"item_assault",
 	"item_moon_shard",
+	"item_abyssal_blade",
+	"item_ultimate_scepter_2",
 };
 
 X["builds"] = {

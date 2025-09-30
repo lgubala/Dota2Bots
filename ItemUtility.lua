@@ -200,8 +200,9 @@ ItemModule["basic_items"] = {
 	"item_orb_of_frost"
 }
 
-ItemModule["item_angels_demise"] = { "item_phylactery"; "item_lesser_crit"; "item_recipe_angels_demise"; }
+ItemModule["item_angels_demise"] = { "item_phylactery"; "item_tiara_of_selemene"; "item_recipe_angels_demise"; }
 
+ItemModule["item_phylactery"] = {"item_diadem"; "item_point_booster", "item_recipe_phylactery" }
 
 ItemModule["item_disperser"] = { "item_diffusal_blade"; "item_eagle"; "item_recipe_disperser"; }
 

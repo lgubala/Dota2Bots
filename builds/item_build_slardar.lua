@@ -16,8 +16,8 @@ X["items"] = {
 	"item_ultimate_scepter_2",
 	"item_heart",
 	"item_harpoon",
+	"item_moon_shard",
 	"item_overwhelming_blink",
-	"item_aghanims_shard",
 };			
 
 X["builds"] = {

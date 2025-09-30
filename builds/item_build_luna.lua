@@ -10,10 +10,12 @@ X["items"] = {
 	"item_power_treads_agi",
 	"item_dragon_lance",
 	"item_yasha",
+	"item_aghanims_shard",
 	"item_black_king_bar",
 	"item_manta",
 	"item_hurricane_pike",
 	"item_butterfly",
+	"item_moon_shard",
 	"item_ultimate_scepter_2",
 	"item_satanic",
 };			
