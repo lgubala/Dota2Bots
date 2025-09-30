@@ -123,7 +123,7 @@ function ConsiderFireblast()
     -- OFFENSIVE: Stop escaping enemies
     for _, enemy in pairs(enemies) do
         if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
-            if enemy:IsRetreating() and enemy:GetHealth() / enemy:GetMaxHealth() < 0.4 then
+            if enemy:GetHealth() / enemy:GetMaxHealth() < 0.4 then
                 return BOT_ACTION_DESIRE_HIGH, enemy;
             end
         end
