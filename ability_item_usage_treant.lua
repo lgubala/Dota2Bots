@@ -35,6 +35,10 @@ local npcBot = nil;
 local checkBuildingTime = DotaTime();
 local team = GetTeam();
 local castEiFTime = -90;
+local enchantedTrees = {}; -- Track enchanted tree locations
+local lastEyePlacementTime = 0;
+local eyePlacementCooldown = 2.0; -- Minimum time between placements
+
 
 function AbilityUsageThink()
 
@@ -402,31 +406,111 @@ end
 
 
 function ConsiderEyeForest()
+    -- Make sure it's castable
+    if not abilityEF:IsFullyCastable() or not npcBot:HasScepter() then 
+        return BOT_ACTION_DESIRE_NONE, 0;
+    end
+    
+    -- Don't spam placements too fast
+    if DotaTime() < lastEyePlacementTime + eyePlacementCooldown then
+        return BOT_ACTION_DESIRE_NONE, 0;
+    end
+    
+    local nRadius = abilityEF:GetCastRange();
+    local eyeVisionRadius = 800; -- Vision radius from each eye
+    local minSeparation = eyeVisionRadius * 1.8; -- Minimum distance between eyes (1440 units)
+    
+    -- Get all nearby trees
+    local trees = npcBot:GetNearbyTrees(math.min(nRadius + 200, 1600));
+    
+    if #trees == 0 then
+        return BOT_ACTION_DESIRE_NONE, 0;
+    end
+    
+    print("[TREANT] Checking " .. #trees .. " trees, have " .. #enchantedTrees .. " existing eyes");
+    
+    -- Find best tree to enchant
+    local bestTree = nil;
+    local bestScore = -1;
+    
+    for _, tree in pairs(trees) do
+        local treeLoc = GetTreeLocation(tree);
+        
+        -- Check distance to ALL existing enchanted trees
+        local validLocation = true;
+        for i, enchantedLoc in pairs(enchantedTrees) do
+            local dist = GetDistance(treeLoc, enchantedLoc);
+            print("[TREANT] Tree distance to eye #" .. i .. ": " .. dist);
+            
+            if dist < minSeparation then
+                validLocation = false;
+                print("[TREANT] Tree rejected - too close to existing eye (" .. dist .. " < " .. minSeparation .. ")");
+                break;
+            end
+        end
+        
+        if validLocation then
+            local score = 0;
+            
+            -- PRIORITY 1: Strategic locations (lanes, jungle entrances)
+            local distToMid = GetDistance(treeLoc, Vector(0, 0, 0));
+            if distToMid < 2000 then
+                score = score + 100;
+            end
+            
+            -- PRIORITY 2: Away from fountain (map coverage)
+            local distFromFountain = GetUnitToLocationDistance(npcBot, treeLoc);
+            score = score + math.min(distFromFountain / 50, 50);
+            
+            -- PRIORITY 3: Near enemy territory
+            local enemyAncient = GetAncient(GetOpposingTeam());
+            if enemyAncient ~= nil then
+                local enemyLoc = enemyAncient:GetLocation();
+                local distToEnemy = GetDistance(treeLoc, enemyLoc);
+                if distToEnemy < 4000 then
+                    score = score + 30;
+                end
+            end
+            
+            -- PRIORITY 4: Maximum distance from existing eyes (spread out)
+            if #enchantedTrees > 0 then
+                local minDistToExisting = 99999;
+                for _, enchantedLoc in pairs(enchantedTrees) do
+                    local dist = GetDistance(treeLoc, enchantedLoc);
+                    if dist < minDistToExisting then
+                        minDistToExisting = dist;
+                    end
+                end
+                score = score + math.min(minDistToExisting / 30, 40);
+            else
+                score = score + 40; -- First eye gets full bonus
+            end
+            
+            print("[TREANT] Valid tree with score: " .. score);
+            
+            if score > bestScore then
+                bestScore = score;
+                bestTree = tree;
+            end
+        end
+    end
+    
+    -- Place eye if we found a good tree
+    if bestTree ~= nil then
+        local bestTreeLoc = GetTreeLocation(bestTree);
+        print("[TREANT] PLACING EYE at location: " .. bestTreeLoc.x .. ", " .. bestTreeLoc.y);
+        lastEyePlacementTime = DotaTime();
+        table.insert(enchantedTrees, bestTreeLoc);
+        return BOT_ACTION_DESIRE_HIGH, bestTree;
+    end
+    
+    print("[TREANT] No valid tree found for eye placement");
+    return BOT_ACTION_DESIRE_NONE, 0;
+end
 
-	-- Make sure it's castable
-	if ( not abilityEF:IsFullyCastable() 
-		or npcBot:HasScepter() == false 
-		or npcBot:DistanceFromFountain() < 1000 
-		or DotaTime() < castEiFTime + 3.0 ) 
-	then 
-		return BOT_ACTION_DESIRE_NONE, 0;
-	end
-	
-	
-
-	-- Get some of its values
-	local nRadius = abilityEF:GetCastRange();
-
-	local trees = npcBot:GetNearbyTrees(nRadius + 200);
-
-	if #trees >= 1 then
-		for i=1, #trees do
-			if ( IsLocationVisible(GetTreeLocation(trees[i])) or IsLocationPassable(GetTreeLocation(trees[i])) ) then
-				return BOT_ACTION_DESIRE_HIGH, trees[i];
-			end
-		end
-	end
-	
-	return BOT_ACTION_DESIRE_NONE, 0;
-
+-- Helper function for distance calculation
+function GetDistance(loc1, loc2)
+    local dx = loc1.x - loc2.x;
+    local dy = loc1.y - loc2.y;
+    return math.sqrt(dx * dx + dy * dy);
 end
