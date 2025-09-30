@@ -10,15 +10,15 @@ X["items"] = {
 	"item_null_talisman",
 	"item_arcane_boots",
 	"item_cyclone",
-	"item_aghanims_shard",
-	"item_orchid",
-	"item_lifesteal",
-	"item_bloodthorn",
+	"item_aether_lens",
+	"item_skadi",
 	"item_sheepstick",
-	"item_satanic",
-	"item_ultimate_scepter_2",
-	"item_moon_shard",
+	"item_octarine_core",
 	"item_wind_waker",
+	"item_ethereal_blade",
+	"item_ultimate_scepter",
+	"item_ultimate_scepter_2",
+	"item_aghanims_shard",
 };			
 
 X["builds"] = {

@@ -5,10 +5,11 @@ local npcBot = GetBot();
 local talents = IBUtil.FillTalenTable(npcBot);
 local skills  = IBUtil.FillSkillTable(npcBot, IBUtil.GetSlotPattern(1));
 
-X["items"] = { 
+X["items"] = {
 	"item_magic_wand",
 	"item_phase_boots",
 	"item_maelstrom",
+	"item_aghanims_shard",
 	"item_heavens_halberd",
 	"item_basher",
 	"item_mjollnir",
