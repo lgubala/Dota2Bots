@@ -315,7 +315,7 @@ function ConsiderFireball()
     end
     
     -- OFFENSIVE: Going on someone - SPAM AGGRESSIVELY
-    if mutil.IsGoingOnSomeone(bot) then
+    if mutils.IsGoingOnSomeone(bot) then
         local target = bot:GetTarget();
         if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) and 
            mutils.IsInRange(target, bot, nCastRange) then
