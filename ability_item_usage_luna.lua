@@ -1,235 +1,335 @@
 if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion() then
-	return;
+    return;
 end
 
 local ability_item_usage_generic = dofile( GetScriptDirectory().."/ability_item_usage_generic" )
 local utils = require(GetScriptDirectory() ..  "/util")
 local mutils = require(GetScriptDirectory() ..  "/MyUtility")
-local abUtils = require(GetScriptDirectory() ..  "/AbilityItemUsageUtility")
 
 function AbilityLevelUpThink()  
-	ability_item_usage_generic.AbilityLevelUpThink(); 
+    ability_item_usage_generic.AbilityLevelUpThink(); 
 end
 function BuybackUsageThink()
-	ability_item_usage_generic.BuybackUsageThink();
+    ability_item_usage_generic.BuybackUsageThink();
 end
 function CourierUsageThink()
-	ability_item_usage_generic.CourierUsageThink();
+    ability_item_usage_generic.CourierUsageThink();
 end
 function ItemUsageThink()
-	ability_item_usage_generic.ItemUsageThink();
+    ability_item_usage_generic.ItemUsageThink();
 end
 
 local bot = GetBot();
 
-local abilities = {};
+-- Ability references
+local abilityQ = nil; -- Lucent Beam
+local abilityW = nil; -- Lunar Orbit
+local abilityE = nil; -- Moon Glaive (passive)
+local abilityR = nil; -- Eclipse
 
-local castCombo1Desire = 0;
-local castCombo2Desire = 0;
+-- Desire values
 local castQDesire = 0;
 local castWDesire = 0;
-local castEDesire = 0;
 local castRDesire = 0;
 
-local lastCheck = -90;
-local castSwapTime = DotaTime();
-local ancient = GetAncient(GetTeam());
-local eancient = GetAncient(GetOpposingTeam());
-local castSwapForSaveCheck = DotaTime();
-local castSwapForChanelling = DotaTime();
-
 function AbilityUsageThink()
-	
-	if #abilities == 0 then abilities = mutils.InitiateAbilities(bot, {0,1,2,5}) end
-	
-	if mutils.CantUseAbility(bot) then return end
-	
-	castQDesire, targetQ = ConsiderQ();
-	-- castWDesire, targetW = ConsiderW();
-	-- castEDesire, targetE  = ConsiderE();
-	castRDesire, targetR, typeR = ConsiderR();
-	
-	if castRDesire > 0 then
-		castSwapTime = DotaTime();
-		if typeR == 'entity' then
-			bot:Action_UseAbilityOnEntity( abilities[4], targetR );
-		elseif typeR == 'loc' then
-			bot:Action_UseAbilityOnLocation( abilities[4], targetR );
-		else
-			bot:Action_UseAbility( abilities[4] );
-		end		
-	end
-	
-	if castQDesire > 0 then
-		bot:Action_UseAbilityOnEntity(abilities[1], targetQ);		
-		return
-	end
-	
-	if castWDesire > 0 then
-		bot:Action_UseAbilityOnLocation(abilities[2], targetW);		
-		return
-	end
-	
-	if castEDesire > 0 then
-		bot:Action_UseAbility( abilities[3] );
-	end
-	
+    
+    if mutils.CanNotUseAbility(bot) then return end
+    
+    -- CHANNELING PROTECTION
+    if mutils.SafeIsChanneling(bot) then
+        return;
+    end
+
+    -- Initialize abilities by name (ALWAYS RECOMMENDED)
+    if abilityQ == nil then abilityQ = bot:GetAbilityByName("luna_lucent_beam"); end
+    if abilityW == nil then abilityW = bot:GetAbilityByName("luna_lunar_orbit"); end
+    if abilityE == nil then abilityE = bot:GetAbilityByName("luna_moon_glaive"); end
+    if abilityR == nil then abilityR = bot:GetAbilityByName("luna_eclipse"); end
+
+    -- Consider using each ability
+    castRDesire, castRTarget, castRType = ConsiderEclipse();
+    castQDesire, castQTarget = ConsiderLucentBeam();
+    castWDesire = ConsiderLunarOrbit();
+
+    -- Priority order: Ultimate > Interrupt > Nuke > Orbit
+    if castRDesire > 0 then
+        if castRType == "entity" then
+            bot:Action_UseAbilityOnEntity(abilityR, castRTarget);
+        elseif castRType == "location" then
+            bot:Action_UseAbilityOnLocation(abilityR, castRTarget);
+        else
+            bot:Action_UseAbility(abilityR);
+        end
+        return;
+    end
+
+    if castQDesire > 0 then
+        bot:Action_UseAbilityOnEntity(abilityQ, castQTarget);
+        return;
+    end
+
+    if castWDesire > 0 then
+        bot:Action_UseAbility(abilityW);
+        return;
+    end
 end
 
-function ConsiderQ()
-	if not mutils.CanBeCast(abilities[1]) then
-		return BOT_ACTION_DESIRE_NONE, nil;
-	end
-	
-	local nCastRange = mutils.GetProperCastRange(false, bot, abilities[1]:GetCastRange());
-	local nCastPoint = abilities[1]:GetCastPoint();
-	local manaCost  = abilities[1]:GetManaCost();
-	
-	if mutils.CanBeCast(abilities[4]) and bot:GetMana() - manaCost <= abilities[4]:GetManaCost() + 50 then
-		return BOT_ACTION_DESIRE_NONE, nil;
-	end
-	
-	if mutils.IsInTeamFight(bot, 1300)
-	then
-		local target = mutils.GetVulnerableWeakestUnit(true, true, nCastRange, bot);
-		if target ~= nil then
-			return BOT_ACTION_DESIRE_HIGH, target;
-		end
-	end
-	
-	if ( bot:GetActiveMode() == BOT_MODE_ROSHAN and mutils.CanSpamSpell(bot, manaCost)  ) 
-	then
-		local npcTarget = mutils.SafeGetAttackTarget(bot);
-		if ( mutils.IsRoshan(npcTarget) and mutils.CanCastOnMagicImmune(npcTarget) and mutils.IsInRange(npcTarget, bot, nCastRange) 
-            and not mutils.IsDisabled(true, npcTarget) )
-		then
-			return BOT_ACTION_DESIRE_LOW, npcTarget;
-		end
-	end
-	
-	if mutils.IsDefending(bot) and mutils.CanSpamSpell(bot, manaCost)
-	then
-		local target = mutils.GetVulnerableWeakestUnit(true, true, nCastRange, bot);
-		if target ~= nil then
-			return BOT_ACTION_DESIRE_HIGH, target;
-		end
-		target = mutils.GetVulnerableWeakestUnit(false, true, nCastRange, bot);
-		if target ~= nil then
-			return BOT_ACTION_DESIRE_HIGH, target;
-		end
-	end
-	
-	if mutils.IsGoingOnSomeone(bot)
-	then
-		local target = bot:GetTarget();
-		if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) and mutils.IsInRange(target, bot, nCastRange+200)
-		then
-			return BOT_ACTION_DESIRE_HIGH, target;
-		end
-	end
-	
-	return BOT_ACTION_DESIRE_NONE, nil;
+function ConsiderLucentBeam()
+    if not mutils.CanBeCast(abilityQ) then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
+    
+    local nCastRange = math.min(abilityQ:GetCastRange(), 1600);
+    local nManaCost = abilityQ:GetManaCost();
+    local nDamage = abilityQ:GetSpecialValueInt("beam_damage");
+    
+    local enemies = bot:GetNearbyHeroes(math.min(nCastRange + 200, 1600), true, BOT_MODE_NONE);
+    
+    -- Save mana for Eclipse if available
+    if mutils.CanBeCast(abilityR) and bot:GetMana() < nManaCost + abilityR:GetManaCost() + 50 then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
+    
+    -- INTERRUPT: Channeling enemies (CRITICAL)
+    for _, enemy in pairs(enemies) do
+        if mutils.SafeIsChanneling(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
+            return BOT_ACTION_DESIRE_VERYHIGH, enemy;
+        end
+    end
+    
+    -- INTERRUPT: TP cancelling
+    for _, enemy in pairs(enemies) do
+        if enemy:IsUsingAbility() and mutils.CanCastOnNonMagicImmune(enemy) then
+            return BOT_ACTION_DESIRE_VERYHIGH, enemy;
+        end
+    end
+    
+    -- KILLSTEAL: Finish off low HP enemies
+    for _, enemy in pairs(enemies) do
+        if mutils.CanCastOnNonMagicImmune(enemy) then
+            local enemyHealth = mutils.SafeGetHealth(enemy);
+            if enemyHealth > 0 and enemyHealth <= nDamage * 0.8 then
+                return BOT_ACTION_DESIRE_VERYHIGH, enemy;
+            end
+        end
+    end
+    
+    -- TEAMFIGHT: Use aggressively
+    if mutils.IsInTeamFight(bot, 1300) then
+        -- Target weakest enemy first
+        local weakestEnemy = nil;
+        local lowestHealth = 999999;
+        
+        for _, enemy in pairs(enemies) do
+            if mutils.CanCastOnNonMagicImmune(enemy) then
+                local enemyHealth = mutils.SafeGetHealth(enemy);
+                if enemyHealth > 0 and enemyHealth < lowestHealth then
+                    lowestHealth = enemyHealth;
+                    weakestEnemy = enemy;
+                end
+            end
+        end
+        
+        if weakestEnemy ~= nil then
+            return BOT_ACTION_DESIRE_HIGH, weakestEnemy;
+        end
+    end
+    
+    -- HARASSMENT: Use in lane aggressively
+    if bot:GetActiveMode() == BOT_MODE_LANING and mutils.AllowedToSpam(bot, nManaCost) then
+        for _, enemy in pairs(enemies) do
+            if mutils.CanCastOnNonMagicImmune(enemy) then
+                return BOT_ACTION_DESIRE_MODERATE, enemy;
+            end
+        end
+    end
+    
+    -- OFFENSIVE: Going on someone
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) and 
+           GetUnitToUnitDistance(target, bot) <= nCastRange + 200 then
+            return BOT_ACTION_DESIRE_HIGH, target;
+        end
+    end
+    
+    -- DEFENSIVE: When defending and have good mana
+    if mutils.IsDefending(bot) and mutils.AllowedToSpam(bot, nManaCost) then
+        for _, enemy in pairs(enemies) do
+            if mutils.CanCastOnNonMagicImmune(enemy) then
+                return BOT_ACTION_DESIRE_MODERATE, enemy;
+            end
+        end
+    end
+    
+    -- ROSHAN: Use on Roshan
+    if bot:GetActiveMode() == BOT_MODE_ROSHAN and mutils.AllowedToSpam(bot, nManaCost) then
+        local npcTarget = mutils.SafeGetAttackTarget(bot);
+        if mutils.IsRoshan(npcTarget) and mutils.IsInRange(npcTarget, bot, nCastRange) then
+            return BOT_ACTION_DESIRE_LOW, npcTarget;
+        end
+    end
+    
+    return BOT_ACTION_DESIRE_NONE, nil;
 end
 
-function ConsiderW()
-	if not mutils.CanBeCast(abilities[2]) then
-		return BOT_ACTION_DESIRE_NONE, nil;
-	end
-	
-	return BOT_ACTION_DESIRE_NONE, nil;
-end	
-
-function ConsiderE()
-	if not mutils.CanBeCast(abilities[3]) 
-	then
-		return BOT_ACTION_DESIRE_NONE, nil;
-	end
-	
-	return BOT_ACTION_DESIRE_NONE, 0;
-end		
-
-function ConsiderR()
-	if not mutils.CanBeCast(abilities[4]) then
-		return BOT_ACTION_DESIRE_NONE, nil;
-	end
-	
-	local nCastPoint = abilities[4]:GetCastPoint();
-	local manaCost  = abilities[4]:GetManaCost();
-	local nRadius   = abilities[4]:GetSpecialValueInt( "radius" );
-	local hitCount = abilities[4]:GetSpecialValueInt( "hit_count" );
-	local nDamage = abilities[1]:GetSpecialValueInt( "beam_damage" );
-	
-	if bot:HasScepter() then
-		hitCount = abilities[4]:GetSpecialValueInt( "hit_count_scepter" );
-		local nTotalDamage = nDamage * hitCount;
-		local nCastRange = mutils.GetProperCastRange(false, bot, abilities[4]:GetSpecialValueInt('cast_range_tooltip_scepter'));
-		
-		if mutils.IsRetreating(bot) and bot:WasRecentlyDamagedByAnyHero(2.0)
-		then
-			local  enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
-			local  creeps = bot:GetNearbyCreeps(nRadius, true);
-			if #enemies > 0 and #creeps <= 2 then
-				return BOT_ACTION_DESIRE_HIGH, bot, 'entity';
-			end
-		end
-		
-		if mutils.IsInTeamFight(bot, 1300)
-		then
-			local nInvUnit = mutils.FindNumInvUnitInLoc(false, bot, nRadius, nRadius, bot:GetLocation());
-			local creeps = bot:GetNearbyCreeps(nRadius, true);
-			if mutils.IsGoingOnSomeone(bot) and nInvUnit >= 2 and #creeps <= 3 then
-				return BOT_ACTION_DESIRE_HIGH, bot, 'entity';
-			end
-			local locationAoE = bot:FindAoELocation( true, true, bot:GetLocation(), nCastRange, nRadius, nCastPoint, 0 );
-			if ( locationAoE.count >= 2 ) then
-				local target = mutils.GetVulnerableUnitNearLoc(true, true, nCastRange, nRadius, locationAoE.targetloc, bot);
-				if target ~= nil then
-					return BOT_ACTION_DESIRE_HIGH, target:GetLocation(), 'loc';
-				end
-			end
-		end
-		
-		if mutils.IsGoingOnSomeone(bot)
-		then
-			local target = bot:GetTarget();
-			if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) 
-				and mutils.IsInRange(target, bot, nCastRange) == true 
-			then
-				local nInvUnit = mutils.FindNumInvUnitInLoc(false, target, nRadius, nRadius, target:GetLocation());
-				local  creeps = target:GetNearbyCreeps(nRadius, false);
-				if nInvUnit >= 2 and #creeps <= 3 then
-					return BOT_ACTION_DESIRE_HIGH, target:GetLocation(), 'loc';
-				end
-			end
-		end
-	else
-		local nTotalDamage = nDamage * hitCount;
-		if mutils.IsRetreating(bot) and bot:WasRecentlyDamagedByAnyHero(2.0)
-		then
-			local  enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
-			local  creeps = bot:GetNearbyCreeps(nRadius, true);
-			if #enemies > 0 and #creeps <= 2 then
-				return BOT_ACTION_DESIRE_HIGH, nil, 'notarget';
-			end
-		end
-		
-		if mutils.IsGoingOnSomeone(bot)
-		then
-			local target = bot:GetTarget();
-			if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) 
-				and mutils.IsInRange(target, bot, nRadius) == true 
-			then
-				local  enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
-				local  creeps = bot:GetNearbyCreeps(nRadius, true);
-				if #enemies >= 2 and #creeps <= 2 then
-					return BOT_ACTION_DESIRE_HIGH, nil, 'notarget';
-				end
-			end
-		end
-	end
-	
-	
-	
-	return BOT_ACTION_DESIRE_NONE, nil;
+function ConsiderLunarOrbit()
+    if not mutils.CanBeCast(abilityW) then
+        return BOT_ACTION_DESIRE_NONE;
+    end
+    
+    local nManaCost = abilityW:GetManaCost();
+    local nRadius = abilityW:GetSpecialValueInt("rotating_glaives_movement_radius");
+    
+    local enemies = bot:GetNearbyHeroes(math.min(nRadius + 300, 1600), true, BOT_MODE_NONE);
+    
+    -- TEAMFIGHT: Use liberally in teamfights
+    if mutils.IsInTeamFight(bot, 1300) and #enemies >= 1 then
+        return BOT_ACTION_DESIRE_HIGH;
+    end
+    
+    -- OFFENSIVE: Use when going on someone
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and GetUnitToUnitDistance(target, bot) <= nRadius + 200 then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
+    
+    -- FARMING: Use for farming with good mana
+    if (mutils.IsPushing(bot) or mutils.IsDefending(bot) or bot:GetActiveMode() == BOT_MODE_FARM) and 
+       mutils.AllowedToSpam(bot, nManaCost) then
+        local creeps = bot:GetNearbyLaneCreeps(math.min(nRadius + 200, 1600), true);
+        if #creeps >= 3 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
+    
+    -- HARASSMENT: Use in lane with good mana
+    if bot:GetActiveMode() == BOT_MODE_LANING and mutils.AllowedToSpam(bot, nManaCost) and #enemies >= 1 then
+        return BOT_ACTION_DESIRE_MODERATE;
+    end
+    
+    -- DEFENSIVE: Use when being chased
+    if mutils.IsRetreating(bot) and #enemies >= 1 and bot:WasRecentlyDamagedByAnyHero(2.0) then
+        return BOT_ACTION_DESIRE_HIGH;
+    end
+    
+    return BOT_ACTION_DESIRE_NONE;
 end
-	
+
+function ConsiderEclipse()
+    if not mutils.CanBeCast(abilityR) then
+        return BOT_ACTION_DESIRE_NONE, nil, "";
+    end
+    
+    local nRadius = abilityR:GetSpecialValueInt("radius");
+    local hitCount = abilityR:GetSpecialValueInt("hit_count");
+    local beamDamage = abilityQ:GetSpecialValueInt("beam_damage");
+    local totalDamage = beamDamage * hitCount;
+    
+    -- Check if we have Scepter
+    if bot:HasScepter() then
+        local nCastRange = math.min(abilityR:GetSpecialValueInt("AbilityCastRange"), 1600);
+        hitCount = 999; -- Scepter removes hit limit
+        totalDamage = beamDamage * abilityR:GetSpecialValueInt("beams");
+        
+        -- SCEPTER: Cast on allies in teamfight
+        if mutils.IsInTeamFight(bot, 1300) then
+            local allies = bot:GetNearbyHeroes(math.min(nCastRange, 1600), false, BOT_MODE_NONE);
+            
+            -- Find ally with most enemies nearby
+            local bestAlly = nil;
+            local maxEnemies = 0;
+            
+            for _, ally in pairs(allies) do
+                local nearbyEnemies = ally:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
+                if #nearbyEnemies > maxEnemies then
+                    maxEnemies = #nearbyEnemies;
+                    bestAlly = ally;
+                end
+            end
+            
+            -- Cast on self if we have most enemies
+            local ourEnemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
+            if #ourEnemies > maxEnemies then
+                bestAlly = bot;
+                maxEnemies = #ourEnemies;
+            end
+            
+            if bestAlly ~= nil and maxEnemies >= 2 then
+                return BOT_ACTION_DESIRE_VERYHIGH, bestAlly, "entity";
+            end
+        end
+        
+        -- SCEPTER: Cast on location in teamfight
+        if mutils.IsInTeamFight(bot, 1300) then
+            local locationAoE = bot:FindAoELocation(true, true, bot:GetLocation(), nCastRange, nRadius, 0, 0);
+            if locationAoE.count >= 2 then
+                return BOT_ACTION_DESIRE_VERYHIGH, locationAoE.targetloc, "location";
+            end
+        end
+        
+        -- SCEPTER: Cast on single target for guaranteed kill
+        if mutils.IsGoingOnSomeone(bot) then
+            local target = bot:GetTarget();
+            if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) then
+                local enemyHealth = mutils.SafeGetHealth(target);
+                local nearbyCreeps = target:GetNearbyCreeps(nRadius, false);
+                
+                -- If target is isolated or low HP, cast on their location
+                if #nearbyCreeps <= 2 and (enemyHealth <= totalDamage * 0.8 or enemyHealth <= target:GetMaxHealth() * 0.5) then
+                    return BOT_ACTION_DESIRE_VERYHIGH, target:GetLocation(), "location";
+                end
+            end
+        end
+    else
+        -- NO SCEPTER: Standard Eclipse
+        local enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
+        local creeps = bot:GetNearbyCreeps(nRadius, true);
+        
+        -- SINGLE TARGET ISOLATED: This is where Eclipse shines!
+        if #enemies == 1 and #creeps <= 2 then
+            local target = enemies[1];
+            if mutils.CanCastOnNonMagicImmune(target) then
+                local enemyHealth = mutils.SafeGetHealth(target);
+                -- Very aggressive - use if enemy is below 80% HP
+                if enemyHealth > 0 and enemyHealth <= target:GetMaxHealth() * 0.8 then
+                    return BOT_ACTION_DESIRE_VERYHIGH, nil, "notarget";
+                end
+            end
+        end
+        
+        -- TEAMFIGHT: Multiple enemies with few creeps
+        if mutils.IsInTeamFight(bot, 1300) and #enemies >= 2 and #creeps <= 3 then
+            return BOT_ACTION_DESIRE_HIGH, nil, "notarget";
+        end
+        
+        -- OFFENSIVE: Going on someone isolated
+        if mutils.IsGoingOnSomeone(bot) then
+            local target = bot:GetTarget();
+            if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) and 
+               GetUnitToUnitDistance(target, bot) <= nRadius then
+                local nearbyEnemies = target:GetNearbyHeroes(nRadius, false, BOT_MODE_NONE);
+                local nearbyCreeps = target:GetNearbyCreeps(nRadius, false);
+                
+                -- Use if target is relatively isolated
+                if #nearbyEnemies <= 1 and #nearbyCreeps <= 3 then
+                    local enemyHealth = mutils.SafeGetHealth(target);
+                    if enemyHealth > 0 and enemyHealth <= target:GetMaxHealth() * 0.7 then
+                        return BOT_ACTION_DESIRE_HIGH, nil, "notarget";
+                    end
+                end
+            end
+        end
+        
+        -- DEFENSIVE: Use when being chased by multiple enemies
+        if mutils.IsRetreating(bot) and #enemies >= 2 and #creeps <= 2 and 
+           bot:WasRecentlyDamagedByAnyHero(2.0) then
+            return BOT_ACTION_DESIRE_HIGH, nil, "notarget";
+        end
+    end
+    
+    return BOT_ACTION_DESIRE_NONE, nil, "";
+end
