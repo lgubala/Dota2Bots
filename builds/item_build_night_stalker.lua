@@ -9,12 +9,11 @@ X["items"] = {
 	"item_magic_wand",
 	"item_phase_boots",
 	"item_basher",
+	"item_sange",
 	"item_black_king_bar",
-	"item_sange_and_yasha",
 	"item_heart",
 	"item_recipe_abyssal_blade",
 	"item_bloodthorn",
-	"item_moon_shard",
 };			
 
 X["builds"] = {
