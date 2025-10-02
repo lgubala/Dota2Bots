@@ -13,7 +13,6 @@ X["items"] = {
 	"item_shivas_guard",
 	"item_ultimate_scepter_2",
 	"item_ethereal_blade",
-	"item_moon_shard",
 	"item_sheepstick",
 };			
 
