@@ -51,6 +51,7 @@ local isRecoveringFromDeath = false;
 -- Time Walk mechanics tracking
 local timeWalkUsedTime = 0;
 local timeWalkStartLocation = nil;
+local timeWalkUsedForEscape = false; 
 local shardComboWindow = 1.5; -- Time window to use reverse after Time Walk
 local lastDamageTime = 0;
 local recentDamageThreshold = 150; -- Minimum damage to consider using Time Walk for heal
@@ -93,6 +94,7 @@ function AbilityUsageThink()
 		isRecoveringFromDeath = true;
 		timeWalkUsedTime = 0;
 		timeWalkStartLocation = nil;
+		timeWalkUsedForEscape = false; -- Reset on death
 		return;
 	end
 	
@@ -129,6 +131,7 @@ function AbilityUsageThink()
 			npcBot:Action_UseAbility(abilityTWR);
 			timeWalkUsedTime = 0; -- Reset tracking
 			timeWalkStartLocation = nil;
+			timeWalkUsedForEscape = false; -- Reset flag
 			return;
 		end
 	end
@@ -147,6 +150,7 @@ function AbilityUsageThink()
 		-- Execute shard combo sequence
 		timeWalkUsedTime = DotaTime();
 		timeWalkStartLocation = npcBot:GetLocation();
+		timeWalkUsedForEscape = false; -- COMBO USAGE - SAFE TO REVERSE
 		npcBot:Action_ClearActions(false);
 		npcBot:ActionQueue_UseAbilityOnLocation(abilityTW, shardComboLocation);
 		npcBot:ActionQueue_UseAbility(abilityTD);
@@ -158,6 +162,7 @@ function AbilityUsageThink()
 		if abilityTW ~= nil then
 			timeWalkUsedTime = DotaTime();
 			timeWalkStartLocation = npcBot:GetLocation();
+			-- timeWalkUsedForEscape is set inside ConsiderTimeWalk()
 			npcBot:Action_UseAbilityOnLocation(abilityTW, castTWLocation);
 			return;
 		end
@@ -183,28 +188,26 @@ function ConsiderTimeWalkReverse()
 		return BOT_ACTION_DESIRE_NONE;
 	end
 
-	-- EMERGENCY: Low health escape
+	-- CRITICAL: Never reverse if Time Walk was used for emergency escape
+	if timeWalkUsedForEscape then
+		return BOT_ACTION_DESIRE_NONE;
+	end
+
 	local healthPercent = npcBot:GetHealth() / npcBot:GetMaxHealth();
-	if healthPercent < 0.3 then
-		return BOT_ACTION_DESIRE_VERYHIGH;
+	
+	-- Additional safety: Don't reverse if now low health (something went wrong)
+	if healthPercent < 0.35 then
+		return BOT_ACTION_DESIRE_NONE;
 	end
 
-	-- RETREAT: Being chased by multiple enemies
-	if mutil.IsRetreating(npcBot) then
-		local enemies = mutil.SafeGetNearbyHeroes(npcBot, 600, true, BOT_MODE_NONE);
-		if #enemies >= 2 then
-			return BOT_ACTION_DESIRE_HIGH;
-		end
-	end
-
-	-- TACTICAL: After using Time Dilation, escape back
+	-- TACTICAL: After using Time Dilation in combo, escape back
 	if npcBot:HasModifier("modifier_faceless_void_time_dilation") then
 		return BOT_ACTION_DESIRE_MODERATE;
 	end
 
-	-- AUTO: Near end of window, use it or lose it
-	if DotaTime() - timeWalkUsedTime > 1.0 then
-		return BOT_ACTION_DESIRE_LOW;
+	-- Only reverse if it's safe (not being heavily damaged)
+	if mutil.IsRetreating(npcBot) or npcBot:WasRecentlyDamagedByAnyHero(1.0) then
+		return BOT_ACTION_DESIRE_NONE;
 	end
 
 	return BOT_ACTION_DESIRE_NONE;
@@ -265,6 +268,7 @@ function ConsiderTimeWalk()
 
 	-- EMERGENCY HEAL: Use for health recovery after taking damage
 	if DotaTime() - lastDamageTime < 2.0 and healthPercent < 0.5 then
+		timeWalkUsedForEscape = true; -- MARK AS EMERGENCY ESCAPE
 		-- Time Walk to a safe location to heal
 		if mutil.IsRetreating(npcBot) then
 			local escapeLocation = mutil.GetEscapeLoc();
@@ -281,12 +285,13 @@ function ConsiderTimeWalk()
 	if mutil.IsRetreating(npcBot) then
 		local enemies = mutil.SafeGetNearbyHeroes(npcBot, 1000, true, BOT_MODE_NONE);
 		if npcBot:WasRecentlyDamagedByAnyHero(2.0) or #enemies > 1 then
+			timeWalkUsedForEscape = true; -- MARK AS EMERGENCY ESCAPE
 			local escapeLocation = mutil.GetEscapeLoc();
 			return BOT_ACTION_DESIRE_HIGH, npcBot:GetXUnitsTowardsLocation(escapeLocation, nCastRange);
 		end
 	end
 
-	-- INITIATION: Jump to enemy
+	-- INITIATION: Jump to enemy (NOT an escape)
 	if mutil.IsGoingOnSomeone(npcBot) then
 		local npcTarget = npcBot:GetTarget();
 		if mutil.IsValidTarget(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange) and 
@@ -296,6 +301,7 @@ function ConsiderTimeWalk()
 			local nearbyEnemies = mutil.SafeGetNearbyHeroes(npcTarget, 800, false, BOT_MODE_NONE);
 			local nearbyAllies = mutil.SafeGetNearbyHeroes(npcBot, 1200, false, BOT_MODE_NONE);
 			if #nearbyEnemies <= #nearbyAllies + 1 then
+				timeWalkUsedForEscape = false; -- SAFE TO REVERSE
 				return BOT_ACTION_DESIRE_MODERATE, npcTarget:GetExtrapolatedLocation(0.3);
 			end
 		end
@@ -303,6 +309,7 @@ function ConsiderTimeWalk()
 
 	-- POSITIONING: Get unstuck
 	if mutil.IsStuck(npcBot) then
+		timeWalkUsedForEscape = true; -- DON'T REVERSE BACK TO STUCK POSITION
 		local escapeLocation = mutil.GetEscapeLoc();
 		return BOT_ACTION_DESIRE_HIGH, npcBot:GetXUnitsTowardsLocation(escapeLocation, nCastRange);
 	end
