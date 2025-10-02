@@ -1708,7 +1708,6 @@ X['safe'] = {
 	'npc_dota_hero_troll_warlord',
 	'npc_dota_hero_ursa',
 	'npc_dota_hero_weaver',
-	'npc_dota_hero_hoodwink',
 }
 
 X['supp'] = {
@@ -1750,6 +1749,7 @@ X['supp'] = {
 	'npc_dota_hero_winter_wyvern',
 	'npc_dota_hero_wisp',
 	'npc_dota_hero_witch_doctor',
+	'npc_dota_hero_hoodwink',
 }
 
 
