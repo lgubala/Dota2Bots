@@ -9,11 +9,11 @@ X["items"] = {
 	"item_magic_wand",
 	"item_power_treads_int",
 	"item_hurricane_pike",
-	"item_desolator",
-	"item_greater_crit",
+	"item_gungir",
+	"item_glimmer_cape",
+	"item_skadi",
 	"item_sheepstick",
-	"item_satanic",
-	"item_moon_shard",
+	"item_shivas_guard",
 };			
 
 X["builds"] = {

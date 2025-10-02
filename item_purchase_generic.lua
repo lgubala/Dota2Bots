@@ -521,7 +521,7 @@ function ItemPurchaseThink()
 	if #bot.itemToBuy == 0 and addVeryLateGameItem == false then
 		bot.itemToBuy = {
 			'item_travel_boots_2',
-			'item_moon_shard',	
+				
 		}
 		if items.HasItem(bot, 'item_travel_boots') == false then
 			bot.itemToBuy[#bot.itemToBuy+1] = 'item_travel_boots';

@@ -11,14 +11,10 @@ X["items"] = {
 	"item_vanguard",
 	"item_crimson_guard",
 	"item_lotus_orb",
-	"item_aghanims_shard",
 	"item_pipe",
 	"item_bloodstone",
-	"item_ultimate_scepter",
 	"item_shivas_guard",
-	"item_ultimate_scepter_2",
 	"item_sheepstick",
-	"item_moon_shard",
 };			
 
 X["builds"] = {

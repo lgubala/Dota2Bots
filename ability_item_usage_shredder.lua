@@ -56,9 +56,9 @@ function AbilityUsageThink()
 	if abilitySC == nil then abilitySC = npcBot:GetAbilityByName( "shredder_whirling_death" ) end
 	if abilityTC == nil then abilityTC = npcBot:GetAbilityByName( "shredder_timber_chain" ) end
 	if abilityCH == nil then abilityCH = npcBot:GetAbilityByName( "shredder_chakram" ) end
-	if abilityCH2 == nil then abilityCH2 = npcBot:GetAbilityByName( "shredder_chakram_2" ) end
+	--if abilityCH2 == nil then abilityCH2 = npcBot:GetAbilityByName( "shredder_chakram_2" ) end
 	if abilityCHR == nil then abilityCHR = npcBot:GetAbilityByName( "shredder_return_chakram" ) end
-	if abilityCHR2 == nil then abilityCHR2 = npcBot:GetAbilityByName( "shredder_return_chakram_2" ) end
+	--if abilityCHR2 == nil then abilityCHR2 = npcBot:GetAbilityByName( "shredder_return_chakram_2" ) end
 	if abilityArm == nil then abilityArm = npcBot:GetAbilityByName( "shredder_reactive_armor" ) end
 	if abilityFlame == nil then abilityFlame = npcBot:GetAbilityByName( "shredder_flamethrower" ) end
 
@@ -66,9 +66,9 @@ function AbilityUsageThink()
 	castSCDesire = ConsiderSlithereenCrush();
 	castTCDesire, castTree, castType = ConsiderTimberChain();
 	castCHDesire, castCHLocation, eta = ConsiderChakram();
-	castCH2Desire, castCH2Location, eta2 = ConsiderChakram2();
+	--castCH2Desire, castCH2Location, eta2 = ConsiderChakram2();
 	castCHRDesire = ConsiderChakramReturn();
-	castCHR2Desire = ConsiderChakramReturn2();
+	--castCHR2Desire = ConsiderChakramReturn2();
 	ClosingDesire, Target = ConsiderClosing();
 	castArmDesire = ConsiderReactiveArmor();
 	castFlameDesire = ConsiderFlameThrow();
@@ -204,7 +204,7 @@ function ConsiderReactiveArmor()
 	end
 
 	if mutil.IsInTeamFight(npcBot, 1200) then
-		return BOT_ACTION_DESIRE_MODERATE;
+		return BOT_ACTION_DESIRE_HIGH;
 	end
 
 	-- If none of the conditions are met, return nil or any default value as per your requirement.
