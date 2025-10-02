@@ -268,29 +268,29 @@ end
 
 --Turbo Mode General item purchase logis
 local function TurboModeGeneralPurchase()
-	--Cache all needed item properties when the last item to buy not equal to current item component to buy
-	if lastItemToBuy ~= bot.currentComponentToBuy then
-		lastItemToBuy = bot.currentComponentToBuy;
-		bot:SetNextItemPurchaseValue( GetItemCost( bot.currentComponentToBuy ) );
-		itemCost = GetItemCost( bot.currentComponentToBuy );
-		lastItemToBuy = bot.currentComponentToBuy ;
-	end
-	
-	local cost = itemCost;
-	
-	--Save the gold for buyback whenever a tier 3 tower damaged or destroyed
-	if t3AlreadyDamaged == false and DotaTime() > t3Check + 1.0 then
-		for i=2, 8, 3 do
-			local tower = GetTower(GetTeam(), i);
-			if tower == nil or tower:GetHealth()/tower:GetMaxHealth() < 0.5 then
-				t3AlreadyDamaged = true;
-				break;
-			end
-		end
-		t3Check = DotaTime();
-	elseif t3AlreadyDamaged == true and bot:GetBuybackCooldown() <= 10 then
-		cost = itemCost + bot:GetBuybackCost() + ( 100 + bot:GetNetWorth()/40 );
-	end
+    if lastItemToBuy ~= bot.currentComponentToBuy then
+        lastItemToBuy = bot.currentComponentToBuy;
+        bot:SetNextItemPurchaseValue( GetItemCost( bot.currentComponentToBuy ) );
+        itemCost = GetItemCost( bot.currentComponentToBuy );
+        lastItemToBuy = bot.currentComponentToBuy;
+    end
+   
+    local cost = itemCost;
+   
+    -- Check T3 tower status periodically
+    if t3AlreadyDamaged == false and DotaTime() > t3Check + 1.0 then
+        for i=2, 8, 3 do
+            local tower = GetTower(GetTeam(), i);
+            if tower == nil or tower:GetHealth()/tower:GetMaxHealth() < 0.5 then
+                t3AlreadyDamaged = true;
+                break;
+            end
+        end
+        t3Check = DotaTime();
+    elseif t3AlreadyDamaged == true and bot:GetBuybackCooldown() <= 10 then
+        -- Reserve ONLY buyback cost + small buffer (200 gold)
+        cost = itemCost + bot:GetBuybackCost() + 200;
+    end
 	
 	--buy the item if we have the gold
 	if ( bot:GetGold() >= cost ) then
