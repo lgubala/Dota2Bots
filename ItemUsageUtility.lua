@@ -1372,7 +1372,7 @@ end
 
 --item_boots_of_bearing
 ItemUsageModule.Use['item_boots_of_bearing'] = function(item, bot, mode, extra_range)
-	return ItemUsageModule.Use['item_ancient_janggo'](item, bot, mode, extra_range);
+	return ItemUsageModule.Use['item_pipe'](item, bot, mode, extra_range);
 end
 
 --item_spirit_vessel
