@@ -11,7 +11,6 @@ X["items"] = {
 	"item_power_treads_agi",
 	"item_dragon_lance",
 	"item_maelstrom",
-	"item_ultimate_scepter",
 	"item_hurricane_pike",
 	"item_mjollnir",
 	"item_greater_crit",
