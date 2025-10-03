@@ -1,223 +1,336 @@
-if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion()  then
-	return;
+if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion() then
+    return;
 end
 
 local ability_item_usage_generic = dofile( GetScriptDirectory().."/ability_item_usage_generic" )
 local utils = require(GetScriptDirectory() ..  "/util")
-local mutil = require(GetScriptDirectory() ..  "/MyUtility")
+local mutils = require(GetScriptDirectory() ..  "/MyUtility")
 
 function AbilityLevelUpThink()  
-	ability_item_usage_generic.AbilityLevelUpThink(); 
+    ability_item_usage_generic.AbilityLevelUpThink(); 
 end
 function BuybackUsageThink()
-	ability_item_usage_generic.BuybackUsageThink();
+    ability_item_usage_generic.BuybackUsageThink();
 end
 function CourierUsageThink()
-	ability_item_usage_generic.CourierUsageThink();
+    ability_item_usage_generic.CourierUsageThink();
 end
 function ItemUsageThink()
-	ability_item_usage_generic.ItemUsageThink();
+    ability_item_usage_generic.ItemUsageThink();
 end
 
-local castDPDesire = 0;
-local castPCDesire = 0;
-local castSDDesire = 0;
+local bot = GetBot();
 
-local abilityDP = nil;
-local abilityPC = nil;
-local abilitySD = nil;
+local abilityDarkPact = nil;
+local abilityPounce = nil;
+local abilityShadowDance = nil;
+local abilityDepthShroud = nil;
 
-local npcBot = nil;
+local castDarkPactDesire = 0;
+local castPounceDesire = 0;
+local castShadowDanceDesire = 0;
+local castDepthShroudDesire = 0;
 
 function AbilityUsageThink()
+    
+    if mutils.CanNotUseAbility(bot) then return end
+    
+    -- CHANNELING PROTECTION
+    if mutils.SafeIsChanneling(bot) then
+        return;
+    end
 
-	if npcBot == nil then npcBot = GetBot(); end
-	
-	-- Check if we're already using an ability
-	if mutil.CanNotUseAbility(npcBot) then return end
+    -- Initialize abilities by name
+    if abilityDarkPact == nil then abilityDarkPact = bot:GetAbilityByName("slark_dark_pact"); end
+    if abilityPounce == nil then abilityPounce = bot:GetAbilityByName("slark_pounce"); end
+    if abilityShadowDance == nil then abilityShadowDance = bot:GetAbilityByName("slark_shadow_dance"); end
+    if abilityDepthShroud == nil then abilityDepthShroud = bot:GetAbilityByName("slark_depth_shroud"); end
 
-	if abilityDP == nil then abilityDP = npcBot:GetAbilityByName( "slark_dark_pact" ) end
-	if abilityPC == nil then abilityPC = npcBot:GetAbilityByName( "slark_pounce" ) end
-	if abilitySD == nil then abilitySD = npcBot:GetAbilityByName( "slark_shadow_dance" ) end
+    -- Consider using each ability
+    castShadowDanceDesire = ConsiderShadowDance();
+    castDepthShroudDesire, castDepthShroudLocation = ConsiderDepthShroud();
+    castDarkPactDesire = ConsiderDarkPact();
+    castPounceDesire = ConsiderPounce();
 
-	-- Consider using each ability
-	castDPDesire = ConsiderDarkPact();
-	castPCDesire = ConsiderPounce();
-	castSDDesire = ConsiderShadowDance();
-	
-	if ( castDPDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilityDP );
-		return;
-	end
-	
-	if ( castPCDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilityPC );
-		return;
-	end
-	
-	if ( castSDDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilitySD );
-		return;
-	end
+    -- Priority: Ultimate (save) > Shard AoE save > Dark Pact (purge) > Pounce
+    if castShadowDanceDesire > 0 then
+        bot:Action_UseAbility(abilityShadowDance);
+        return;
+    end
 
+    if castDepthShroudDesire > 0 then
+        bot:Action_UseAbilityOnLocation(abilityDepthShroud, castDepthShroudLocation);
+        return;
+    end
+
+    if castDarkPactDesire > 0 then
+        bot:Action_UseAbility(abilityDarkPact);
+        return;
+    end
+
+    if castPounceDesire > 0 then
+        bot:Action_UseAbility(abilityPounce);
+        return;
+    end
 end
 
 function ConsiderDarkPact()
+    if not mutils.CanBeCast(abilityDarkPact) then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
-	-- Make sure it's castable
-	if ( not abilityDP:IsFullyCastable() ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
+    local nRadius = abilityDarkPact:GetSpecialValueInt("radius");
+    local nDamage = abilityDarkPact:GetSpecialValueInt("total_damage");
+    local manaPercent = bot:GetMana() / bot:GetMaxMana();
 
+    -- PURGE: Remove debuffs (HIGHEST PRIORITY)
+    if bot:IsRooted() or bot:IsStunned() or bot:IsSilenced() or bot:IsHexed() then
+        return BOT_ACTION_DESIRE_VERYHIGH;
+    end
 
-	-- Get some of its values
-	local nCastRange = abilityPC:GetSpecialValueInt( "pounce_distance" );
-	local nRadius = abilityDP:GetSpecialValueInt( "radius" );
-	local nDamage = abilityDP:GetSpecialValueInt( "total_damage" );
+    -- Check for common negative debuffs by name
+    local commonDebuffs = {
+        "modifier_silence",
+        "modifier_doom_bringer_doom",
+        "modifier_bloodseeker_rupture",
+        "modifier_disruptor_thunder_strike",
+        "modifier_slardar_amplify_damage",
+        "modifier_track",
+        "modifier_dust",
+        "modifier_item_urn_damage",
+        "modifier_venomancer_poison_nova",
+        "modifier_viper_poison_attack_slow",
+        "modifier_ice_blast",
+        "modifier_cold_feet"
+    };
+    
+    for _, debuffName in pairs(commonDebuffs) do
+        if bot:HasModifier(debuffName) then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
 
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
+    -- ESCAPE: Slow enemies chasing us
+    if mutils.IsRetreating(bot) and bot:WasRecentlyDamagedByAnyHero(2.0) then
+        local enemies = bot:GetNearbyHeroes(nRadius + 200, true, BOT_MODE_NONE);
+        if #enemies > 0 then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
 
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1000, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE;
-			end
-		end
-	end
+    -- TEAMFIGHT: AOE damage on multiple enemies
+    if mutils.IsInTeamFight(bot, 1200) then
+        local enemies = bot:GetNearbyHeroes(nRadius, true, BOT_MODE_NONE);
+        if #enemies >= 2 then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
 
-	-- If we're farming and can kill 3+ creeps with LSA
-	if mutil.IsPushing(npcBot) 
-	then
-		local tableNearbyEnemyCreeps = npcBot:GetNearbyLaneCreeps( nRadius, true );
-		if ( tableNearbyEnemyCreeps ~= nil and #tableNearbyEnemyCreeps >= 3 and npcBot:GetMana()/npcBot:GetMaxMana() > 0.6 ) then
-			return BOT_ACTION_DESIRE_LOW;
-		end
-	end
-	
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnNonMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange-200)
-		then
-			return BOT_ACTION_DESIRE_HIGH;
-		end
-	end
+    -- OFFENSIVE: Going on someone - aggressive damage
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) then
+            local distance = GetUnitToUnitDistance(bot, target);
+            if distance <= nRadius then
+                return BOT_ACTION_DESIRE_HIGH;
+            end
+        end
+    end
 
-	return BOT_ACTION_DESIRE_NONE;
+    -- FARMING: Clear wave when pushing (only with good mana)
+    if mutils.IsPushing(bot) and manaPercent > 0.6 then
+        local creeps = bot:GetNearbyLaneCreeps(nRadius, true);
+        if #creeps >= 3 then
+            return BOT_ACTION_DESIRE_LOW;
+        end
+    end
 
+    return BOT_ACTION_DESIRE_NONE;
 end
 
-
 function ConsiderPounce()
+    if not mutils.CanBeCast(abilityPounce) or bot:IsRooted() then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
-	-- Make sure it's castable
-	if ( not abilityPC:IsFullyCastable() or npcBot:IsRooted() ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
+    local nCastRange = abilityPounce:GetSpecialValueInt("pounce_distance");
+    local hasScepter = bot:HasScepter();
+    
+    -- Scepter increases range
+    if hasScepter then
+        nCastRange = abilityPounce:GetSpecialValueInt("pounce_distance_scepter");
+    end
 
+    -- ESCAPE: Get out of danger
+    if mutils.IsRetreating(bot) then
+        local enemies = bot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
+        if #enemies > 0 then
+            if bot:WasRecentlyDamagedByAnyHero(2.0) or bot:WasRecentlyDamagedByTower(2.0) or #enemies >= 2 then
+                -- Pounce away from enemies (toward escape location)
+                local escapeLoc = mutils.GetEscapeLoc();
+                if utils.IsFacingLocation(bot, escapeLoc, 20) then
+                    -- Check we're not pouncing into more enemies
+                    local facingEnemies = 0;
+                    for _, enemy in pairs(enemies) do
+                        if mutils.IsValidTarget(enemy) and bot:IsFacingUnit(enemy, 15) then
+                            facingEnemies = facingEnemies + 1;
+                        end
+                    end
+                    if facingEnemies == 0 then
+                        return BOT_ACTION_DESIRE_VERYHIGH;
+                    end
+                end
+            end
+        end
+    end
 
-	-- Get some of its values
-	local nCastRange = abilityPC:GetSpecialValueInt( "pounce_distance" );
-	local nDamage = 0;
-	-- local nDamage = abilityPC:GetSpecialValueInt( "pounce_damage" );
+    -- OFFENSIVE: Leash target we're going for
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) then
+            local distance = GetUnitToUnitDistance(bot, target);
+            
+            -- Don't leash already leashed target (check modifier)
+            if not target:HasModifier("modifier_slark_pounce_leash") then
+                -- Pounce if in range and facing target
+                if distance <= nCastRange and distance > 200 and bot:IsFacingUnit(target, 10) then
+                    -- Don't pounce disabled enemies (waste of leash)
+                    if not mutils.IsDisabled(true, target) then
+                        return BOT_ACTION_DESIRE_HIGH;
+                    end
+                end
+            end
+        end
+    end
 
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
+    -- SAVE ALLY: Leash enemy attacking low HP ally
+    local allies = bot:GetNearbyHeroes(800, false, BOT_MODE_NONE);
+    for _, ally in pairs(allies) do
+        if ally ~= bot and not ally:IsIllusion() then
+            local allyHealthPercent = mutils.SafeGetHealthPercent(ally);
+            if allyHealthPercent < 0.35 and mutils.SafeWasRecentlyDamaged(ally, 1.5) then
+                -- Find enemy attacking this ally
+                local enemies = ally:GetNearbyHeroes(600, true, BOT_MODE_NONE);
+                for _, enemy in pairs(enemies) do
+                    if mutils.IsValidTarget(enemy) then
+                        local distanceToEnemy = GetUnitToUnitDistance(bot, enemy);
+                        if distanceToEnemy <= nCastRange and bot:IsFacingUnit(enemy, 15) then
+                            if not enemy:HasModifier("modifier_slark_pounce_leash") then
+                                return BOT_ACTION_DESIRE_HIGH;
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
 
-	if mutil.IsStuck(npcBot)
-	then
-		return BOT_ACTION_DESIRE_HIGH;
-	end
-	
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1200, true, BOT_MODE_NONE );
-		if ( npcBot:WasRecentlyDamagedByAnyHero(2.0) or npcBot:WasRecentlyDamagedByTower(2.0) or ( tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes > 1  ) )
-		then
-			local loc = mutil.GetEscapeLoc();
-			if utils.IsFacingLocation(npcBot,loc, 15) then
-				local nFacing = 0;
-				local enemies = npcBot:GetNearbyHeroes(nCastRange, true, BOT_MODE_NONE);
-				for i=1, #enemies do
-					if mutil.IsValidTarget(enemies[i]) 
-						and mutil.CanCastOnNonMagicImmune(enemies[i]) 
-						and npcBot:IsFacingUnit(enemies[i], 10) 
-					then
-						nFacing = nFacing + 1;
-					end	
-				end
-				if nFacing == 0 then
-					return BOT_ACTION_DESIRE_MODERATE;
-				end
-			end
-		end
-	end
+    -- UNSTUCK: Get out of blocked position
+    if mutils.IsStuck(bot) then
+        return BOT_ACTION_DESIRE_MODERATE;
+    end
 
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnNonMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange-200)
-		   and npcBot:IsFacingUnit(npcTarget, 5) and not mutil.IsDisabled(true, npcTarget)
-		then
-			return BOT_ACTION_DESIRE_HIGH;
-		end
-	end
-
-	return BOT_ACTION_DESIRE_NONE;
-
+    return BOT_ACTION_DESIRE_NONE;
 end
 
 function ConsiderShadowDance()
+    if not mutils.CanBeCast(abilityShadowDance) then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
-	-- Make sure it's castable
-	if ( not abilitySD:IsFullyCastable() ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
+    local healthPercent = bot:GetHealth() / bot:GetMaxHealth();
 
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
+    -- EMERGENCY SAVE: Very low HP
+    if healthPercent < 0.25 and bot:WasRecentlyDamagedByAnyHero(2.0) then
+        return BOT_ACTION_DESIRE_VERYHIGH;
+    end
 
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1000, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 2.0 ) or npcEnemy:IsUsingAbility() ) and npcBot:GetHealth()/npcBot:GetMaxHealth() < 0.5 ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE;
-			end
-		end
-	end
+    -- ESCAPE: Retreating and taking damage
+    if mutils.IsRetreating(bot) then
+        local enemies = bot:GetNearbyHeroes(1000, true, BOT_MODE_NONE);
+        if #enemies > 0 and healthPercent < 0.5 then
+            for _, enemy in pairs(enemies) do
+                if bot:WasRecentlyDamagedByHero(enemy, 2.0) or enemy:IsChanneling() then
+                    return BOT_ACTION_DESIRE_HIGH;
+                end
+            end
+        end
+    end
 
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot) and npcBot:GetHealth() < 0.65*npcBot:GetMaxHealth()
-	then
-		local npcTarget = npcBot:GetTarget();
-		if ( mutil.IsValidTarget(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, 300)  ) 
-		then
-			local tableNearbyEnemyHeroes = npcTarget:GetNearbyHeroes( 1000, true, BOT_MODE_NONE );
-			if tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes >= 2 then
-				return BOT_ACTION_DESIRE_HIGH;
-			end
-		end
-	end
+    -- TEAMFIGHT: Multiple enemies and moderate health
+    if mutils.IsInTeamFight(bot, 1200) and healthPercent < 0.6 then
+        local enemies = bot:GetNearbyHeroes(1000, true, BOT_MODE_NONE);
+        if #enemies >= 2 then
+            return BOT_ACTION_DESIRE_HIGH;
+        end
+    end
 
-	return BOT_ACTION_DESIRE_NONE;
+    -- OFFENSIVE: Going on someone but need healing/invis
+    if mutils.IsGoingOnSomeone(bot) and healthPercent < 0.65 then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) then
+            local distance = GetUnitToUnitDistance(bot, target);
+            -- Use when close to target to stay in fight and heal
+            if distance <= 400 then
+                local nearbyEnemies = target:GetNearbyHeroes(1000, false, BOT_MODE_NONE);
+                if #nearbyEnemies >= 2 then
+                    return BOT_ACTION_DESIRE_MODERATE;
+                end
+            end
+        end
+    end
 
+    return BOT_ACTION_DESIRE_NONE;
+end
+
+function ConsiderDepthShroud()
+    -- Shard check: ability exists and not hidden
+    if abilityDepthShroud == nil or not mutils.CanBeCast(abilityDepthShroud) or abilityDepthShroud:IsHidden() then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
+
+    local nCastRange = math.min(abilityDepthShroud:GetCastRange(), 1600);
+    local nRadius = abilityDepthShroud:GetSpecialValueInt("radius");
+
+    -- SAVE ALLIES: Low HP allies in teamfight
+    local allies = bot:GetNearbyHeroes(nCastRange, false, BOT_MODE_NONE);
+    for _, ally in pairs(allies) do
+        if not ally:IsIllusion() then
+            local allyHealthPercent = mutils.SafeGetHealthPercent(ally);
+            if allyHealthPercent < 0.30 and mutils.SafeWasRecentlyDamaged(ally, 2.0) then
+                -- Place on low HP ally
+                return BOT_ACTION_DESIRE_VERYHIGH, ally:GetLocation();
+            end
+        end
+    end
+
+    -- TEAMFIGHT: Protect multiple allies
+    if mutils.IsInTeamFight(bot, 1200) then
+        local alliesInDanger = 0;
+        local centerLocation = bot:GetLocation();
+        
+        for _, ally in pairs(allies) do
+            if not ally:IsIllusion() then
+                local allyHealthPercent = mutils.SafeGetHealthPercent(ally);
+                if allyHealthPercent < 0.5 and mutils.SafeWasRecentlyDamaged(ally, 2.0) then
+                    alliesInDanger = alliesInDanger + 1;
+                    centerLocation = ally:GetLocation();
+                end
+            end
+        end
+        
+        if alliesInDanger >= 2 then
+            return BOT_ACTION_DESIRE_HIGH, centerLocation;
+        end
+    end
+
+    -- SELF SAVE: Use on self when low HP
+    if bot:GetHealth() / bot:GetMaxHealth() < 0.35 then
+        local enemies = bot:GetNearbyHeroes(800, true, BOT_MODE_NONE);
+        if #enemies > 0 and bot:WasRecentlyDamagedByAnyHero(2.0) then
+            return BOT_ACTION_DESIRE_HIGH, bot:GetLocation();
+        end
+    end
+
+    return BOT_ACTION_DESIRE_NONE, nil;
 end
