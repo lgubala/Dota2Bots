@@ -9,11 +9,12 @@ X["items"] = {
 	"item_magic_wand",
 	"item_power_treads_int",
 	"item_hurricane_pike",
-	"item_gungir",
+	"item_aghanims_shard",
 	"item_glimmer_cape",
-	"item_skadi",
+	"item_gungir",
+	"item_bloodthorn",
 	"item_sheepstick",
-	"item_shivas_guard",
+	"item_ultimate_scepter_2",
 };			
 
 X["builds"] = {

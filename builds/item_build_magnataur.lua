@@ -10,15 +10,15 @@ X["items"] = {
 	"item_power_treads_str",
 	"item_echo_sabre",
 	"item_blink",
-	"item_black_king_bar",
 	"item_aghanims_shard",
-	"item_ultimate_scepter",
+	"item_black_king_bar",
 	"item_shivas_guard",
 	"item_harpoon",
-	"item_ultimate_scepter_2",
+	"item_ultimate_scepter",
 	"item_refresher",
 	"item_arcane_blink",
 	"item_greater_crit",
+	"item_ultimate_scepter_2",
 	"item_sheepstick",
 };			
 

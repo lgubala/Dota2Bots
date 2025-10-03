@@ -4,15 +4,15 @@ local IBUtil = require(GetScriptDirectory() .. "/ItemBuildUtility");
 local npcBot = GetBot();
 local talents = IBUtil.FillTalenTable(npcBot);
 
-X["items"] = { 
+X["items"] = {
 	"item_magic_wand",
 	"item_power_treads_agi",
 	"item_gungir",
 	"item_dragon_lance",
+	"item_aghanims_shard",
 	"item_hurricane_pike",
 	"item_black_king_bar",
 	"item_ultimate_scepter",
-	"item_aghanims_shard",
 	"item_ultimate_scepter_2",
 	"item_monkey_king_bar",
 	"item_sheepstick",

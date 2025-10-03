@@ -7,16 +7,19 @@ local skills  = IBUtil.FillSkillTable(npcBot, IBUtil.GetSlotPattern(1));
 
 X["items"] = {
 	"item_magic_wand",
-	"item_arcane_boots",
-	"item_mekansm",
-	"item_glimmer_cape",
+	"item_tranquil_boots",
+	"item_urn_of_shadows",
+	"item_holy_locket",
+	"item_ancient_janggo",
+	"item_spirit_vessel",
+	"item_boots_of_bearing",
+	"item_solar_crest",
+	"item_pipe",
+	"item_vanguard",
 	"item_aghanims_shard",
-	"item_guardian_greaves",
 	"item_ultimate_scepter_2",
-	"item_heart",
-	"item_greater_crit",
-	"item_satanic",
-	"item_sheepstick",
+	"item_moon_shard",
+	"item_crimson_guard",
 };			
 
 X["builds"] = {

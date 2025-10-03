@@ -1,215 +1,231 @@
-if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion()  then
-	return;
+if GetBot():IsInvulnerable() or not GetBot():IsHero() or not string.find(GetBot():GetUnitName(), "hero") or GetBot():IsIllusion() then
+    return;
 end
 
 local ability_item_usage_generic = dofile( GetScriptDirectory().."/ability_item_usage_generic" )
 local utils = require(GetScriptDirectory() ..  "/util")
-local mutil = require(GetScriptDirectory() ..  "/MyUtility")
+local mutils = require(GetScriptDirectory() ..  "/MyUtility")
 
 function AbilityLevelUpThink()  
-	ability_item_usage_generic.AbilityLevelUpThink(); 
+    ability_item_usage_generic.AbilityLevelUpThink(); 
 end
 function BuybackUsageThink()
-	ability_item_usage_generic.BuybackUsageThink();
+    ability_item_usage_generic.BuybackUsageThink();
 end
 function CourierUsageThink()
-	ability_item_usage_generic.CourierUsageThink();
+    ability_item_usage_generic.CourierUsageThink();
 end
 function ItemUsageThink()
-	ability_item_usage_generic.ItemUsageThink();
+    ability_item_usage_generic.ItemUsageThink();
 end
 
-local castDCDesire = 0;
-local castPCDesire = 0;
-local castSDDesire = 0;
+local bot = GetBot();
 
-local abilityDC = "";
-local abilityPC = "";
-local abilitySD = "";
-local npcBot = nil;
+local abilitySwarm = nil;
+local abilityShukuchi = nil;
+local abilityGeminate = nil;
+local abilityTimeLapse = nil;
+
+local castSwarmDesire = 0;
+local castShukuchiDesire = 0;
+local castTimeLapseDesire = 0;
+
+local geminateAutoCastEnabled = false;
+local lastHealthCheck = 1.0;
 
 function AbilityUsageThink()
+    
+    if mutils.CanNotUseAbility(bot) then return end
+    
+    -- CHANNELING PROTECTION
+    if mutils.SafeIsChanneling(bot) then
+        return;
+    end
 
-	if npcBot == nil then npcBot = GetBot(); end
-	
-	-- Check if we're already using an ability
-	if ( npcBot:IsUsingAbility() or mutil.SafeIsChanneling(npcBot) or npcBot:IsSilenced()  ) then return end
+    -- Initialize abilities by name
+    if abilitySwarm == nil then abilitySwarm = bot:GetAbilityByName("weaver_the_swarm"); end
+    if abilityShukuchi == nil then abilityShukuchi = bot:GetAbilityByName("weaver_shukuchi"); end
+    if abilityGeminate == nil then abilityGeminate = bot:GetAbilityByName("weaver_geminate_attack"); end
+    if abilityTimeLapse == nil then abilityTimeLapse = bot:GetAbilityByName("weaver_time_lapse"); end
 
-	if abilityDC == "" then abilityDC = npcBot:GetAbilityByName( "weaver_the_swarm" ); end
-	if abilityPC == "" then abilityPC = npcBot:GetAbilityByName( "weaver_shukuchi" ); end
-	if abilitySD == "" then abilitySD = npcBot:GetAbilityByName( "weaver_time_lapse" ); end
+    -- Enable Geminate Attack autocast (like Hoodwink's Acorn Shot)
+    if abilityGeminate ~= nil and not geminateAutoCastEnabled then
+        if abilityGeminate:GetAutoCastState() == false then
+            abilityGeminate:ToggleAutoCast();
+        end
+        geminateAutoCastEnabled = true;
+    end
 
-	-- Consider using each ability
-	castDCDesire, castDCLocation = ConsiderDecay();
-	castPCDesire = ConsiderPounce();
-	castSDDesire, castSDTarget = ConsiderShadowDance();
-	
-	if ( castDCDesire > 0 ) 
-	then
-		npcBot:Action_UseAbilityOnLocation( abilityDC, castDCLocation );
-		return;
-	end
-	
-	if ( castPCDesire > 0 ) 
-	then
-		npcBot:Action_UseAbility( abilityPC );
-		return;
-	end
-	
-	if ( castSDDesire > 0 ) 
-	then
-		if castSDTarget == "-1" then
-			npcBot:Action_UseAbility( abilitySD );
-		else
-			npcBot:Action_UseAbilityOnEntity( abilitySD, castSDTarget );
-		end
-		return;
-	end
+    -- Consider using each ability
+    castTimeLapseDesire, castTimeLapseTarget = ConsiderTimeLapse();
+    castShukuchiDesire = ConsiderShukuchi();
+    castSwarmDesire, castSwarmLocation = ConsiderSwarm();
 
+    -- Priority: Ultimate (save) > Escape/Chase > Offensive
+    if castTimeLapseDesire > 0 then
+        if bot:HasScepter() and castTimeLapseTarget ~= nil then
+            bot:Action_UseAbilityOnEntity(abilityTimeLapse, castTimeLapseTarget);
+        else
+            bot:Action_UseAbility(abilityTimeLapse);
+        end
+        return;
+    end
+
+    if castShukuchiDesire > 0 then
+        bot:Action_UseAbility(abilityShukuchi);
+        return;
+    end
+
+    if castSwarmDesire > 0 then
+        bot:Action_UseAbilityOnLocation(abilitySwarm, castSwarmLocation);
+        return;
+    end
 end
 
-function ConsiderDecay()
+function ConsiderSwarm()
+    if not mutils.CanBeCast(abilitySwarm) then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
 
-	-- Make sure it's castable
-	if ( not abilityDC:IsFullyCastable() ) 
-	then 
-		return BOT_ACTION_DESIRE_NONE, 0;
-	end
+    local nCastRange = math.min(abilitySwarm:GetCastRange(), 1600);
+    local nManaCost = abilitySwarm:GetManaCost();
+    local nRadius = abilitySwarm:GetSpecialValueInt("spawn_radius");
+    local manaPercent = bot:GetMana() / bot:GetMaxMana();
 
+    -- Don't spam if low on mana (save for escape)
+    if manaPercent < 0.3 then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
 
-	-- Get some of its values
-	local nRadius = abilityDC:GetSpecialValueInt( "spawn_radius" );
-	local nCastRange = 1000;
-	local nCastPoint = abilityDC:GetCastPoint( );
+    -- TEAMFIGHT: Multi-target scenarios (HIGH PRIORITY)
+    if mutils.IsInTeamFight(bot, 1200) then
+        local locationAoE = bot:FindAoELocation(true, true, bot:GetLocation(), nCastRange, nRadius, 0, 0);
+        if locationAoE.count >= 2 then
+            return BOT_ACTION_DESIRE_HIGH, locationAoE.targetloc;
+        end
+    end
 
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( nCastRange, true, BOT_MODE_NONE );
-		for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-		do
-			if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 1.0 ) ) 
-			then
-				return BOT_ACTION_DESIRE_MODERATE, npcEnemy:GetLocation();
-			end
-		end
-	end
-	
-	if ( npcBot:GetActiveMode() == BOT_MODE_ROSHAN  ) 
-	then
-		local npcTarget = npcBot:GetTarget();
-		if ( mutil.IsRoshan(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange)  )
-		then
-			return BOT_ACTION_DESIRE_LOW, npcTarget:GetLocation();
-		end
-	end
-	
-	-- If we're pushing or defending a lane and can hit 4+ creeps, go for it
-	if mutil.IsDefending(npcBot) or mutil.IsPushing(npcBot) and npcBot:GetMana() / npcBot:GetMaxMana() > 0.65
-	then
-		local locationAoE = npcBot:FindAoELocation( true, false, npcBot:GetLocation(), nCastRange, nRadius/2, 0, 0 );
-		if ( locationAoE.count >= 3 ) 
-		then
-			return BOT_ACTION_DESIRE_LOW, locationAoE.targetloc;
-		end
-	end
+    -- OFFENSIVE: Going on someone (AGGRESSIVE)
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) and mutils.CanCastOnNonMagicImmune(target) then
+            local distance = GetUnitToUnitDistance(bot, target);
+            if distance <= nCastRange then
+                return BOT_ACTION_DESIRE_HIGH, target:GetExtrapolatedLocation(0.3);
+            end
+        end
+    end
 
-	
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
+    -- FARMING: Clear waves when pushing/defending (only with good mana)
+    if (mutils.IsPushing(bot) or mutils.IsDefending(bot)) and manaPercent > 0.6 then
+        local locationAoE = bot:FindAoELocation(true, false, bot:GetLocation(), nCastRange, nRadius, 0, 0);
+        if locationAoE.count >= 4 then
+            return BOT_ACTION_DESIRE_LOW, locationAoE.targetloc;
+        end
+    end
 
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and mutil.IsInRange(npcTarget, npcBot, nCastRange)
-		then
-			return BOT_ACTION_DESIRE_MODERATE, npcTarget:GetExtrapolatedLocation( nCastPoint );
-		end
-	end
---
-	return BOT_ACTION_DESIRE_NONE, 0;
+    return BOT_ACTION_DESIRE_NONE, nil;
 end
 
+function ConsiderShukuchi()
+    if not mutils.CanBeCast(abilityShukuchi) then
+        return BOT_ACTION_DESIRE_NONE;
+    end
 
+    local nManaCost = abilityShukuchi:GetManaCost();
+    local healthPercent = bot:GetHealth() / bot:GetMaxHealth();
+    local manaPercent = bot:GetMana() / bot:GetMaxMana();
 
-function ConsiderPounce()
+    -- ESCAPE: Retreating from danger (HIGHEST PRIORITY)
+    if mutils.IsRetreating(bot) then
+        local enemies = bot:GetNearbyHeroes(1000, true, BOT_MODE_NONE);
+        if #enemies > 0 then
+            if healthPercent < 0.5 or #enemies >= 2 or bot:WasRecentlyDamagedByAnyHero(2.0) then
+                return BOT_ACTION_DESIRE_VERYHIGH;
+            end
+        end
+    end
 
-	-- Make sure it's castable
-	if ( not abilityPC:IsFullyCastable() or castSDDesire > 0 ) then 
-		return BOT_ACTION_DESIRE_NONE;
-	end
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	local nAttackRange = npcBot:GetAttackRange(); 
-	
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1000, true, BOT_MODE_NONE );
-		if ( npcBot:WasRecentlyDamagedByAnyHero(2.0) or npcBot:WasRecentlyDamagedByTower(2.0) or ( tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes > 1  ) )
-		then
-			return BOT_ACTION_DESIRE_MODERATE;
-		end
-	end
+    -- CHASE: Catching fleeing enemies
+    if mutils.IsGoingOnSomeone(bot) then
+        local target = bot:GetTarget();
+        if mutils.IsValidTarget(target) then
+            local distance = GetUnitToUnitDistance(bot, target);
+            local attackRange = bot:GetAttackRange();
+            
+            -- Use to close gap if target is out of attack range
+            if distance > attackRange + 200 and distance < 2000 then
+                return BOT_ACTION_DESIRE_HIGH;
+            end
+        end
+    end
 
-	-- If we're going after someone
-	if mutil.IsGoingOnSomeone(npcBot)
-	then
-		local npcTarget = npcBot:GetTarget();
-		if mutil.IsValidTarget(npcTarget) and mutil.CanCastOnMagicImmune(npcTarget) and not mutil.IsInRange(npcTarget, npcBot, nAttackRange+200) and 
-		   mutil.IsInRange(npcTarget, npcBot, 2000)
-		then
-			return BOT_ACTION_DESIRE_HIGH;
-		end
-	end
+    -- AGGRESSIVE POSITIONING: In teamfights for damage + repositioning
+    if mutils.IsInTeamFight(bot, 1200) and manaPercent > 0.4 then
+        local enemies = bot:GetNearbyHeroes(600, true, BOT_MODE_NONE);
+        if #enemies >= 2 then
+            return BOT_ACTION_DESIRE_MODERATE;
+        end
+    end
 
-	return BOT_ACTION_DESIRE_NONE;
-
+    return BOT_ACTION_DESIRE_NONE;
 end
 
-function ConsiderShadowDance()
+function ConsiderTimeLapse()
+    if not mutils.CanBeCast(abilityTimeLapse) then
+        return BOT_ACTION_DESIRE_NONE, nil;
+    end
 
-	-- Make sure it's castable
-	if ( not abilitySD:IsFullyCastable() ) then 
-		return BOT_ACTION_DESIRE_NONE, 0;
-	end
-	--------------------------------------
-	-- Mode based usage
-	--------------------------------------
-	-- If we're seriously retreating, see if we can land a stun on someone who's damaged us recently
-	if mutil.IsRetreating(npcBot)
-	then
-		local tableNearbyEnemyHeroes = npcBot:GetNearbyHeroes( 1000, true, BOT_MODE_NONE );
-		if tableNearbyEnemyHeroes ~= nil and #tableNearbyEnemyHeroes >= 2 and mutil.SafeGetHealthPercent(npcBot) < 0.15 and abilityPC:GetCooldownTimeRemaining() < 3 then
-			return BOT_ACTION_DESIRE_MODERATE, "-1";
-		end
-		if mutil.SafeGetHealthPercent(npcBot) < 0.25
-		then
-			for _,npcEnemy in pairs( tableNearbyEnemyHeroes )
-			do
-				if ( npcBot:WasRecentlyDamagedByHero( npcEnemy, 1.0 ) ) 
-				then
-					return BOT_ACTION_DESIRE_MODERATE, "-1";
-				end
-			end
-		end
-	end
+    local currentHealth = bot:GetHealth();
+    local maxHealth = bot:GetMaxHealth();
+    local healthPercent = currentHealth / maxHealth;
+    local hasScepter = bot:HasScepter();
 
-	if npcBot:HasScepter() 
-	then
-		local tableNearbyFriendlyHeroes = npcBot:GetNearbyHeroes( 1000, false, BOT_MODE_NONE );
-		for _,myFriend in pairs(tableNearbyFriendlyHeroes) do
-			if mutil.IsRetreating(myFriend) and myFriend:WasRecentlyDamagedByAnyHero(2.0) and mutil.SafeGetHealthPercent(myFriend) < 0.25
-			then
-				return BOT_ACTION_DESIRE_MODERATE, myFriend;
-			end
-		end	
-	end
-	
-	return BOT_ACTION_DESIRE_NONE, 0;
+    -- Track health loss for emergency saves
+    local healthLoss = lastHealthCheck - healthPercent;
+    lastHealthCheck = healthPercent;
 
+    -- SELF SAVE: Used Time Lapse to restore health after big damage
+    local recentDamage = bot:WasRecentlyDamagedByAnyHero(2.0);
+    
+    -- Emergency save: took massive damage or very low health
+    if healthPercent < 0.15 and recentDamage then
+        if hasScepter then
+            return BOT_ACTION_DESIRE_VERYHIGH, bot;
+        else
+            return BOT_ACTION_DESIRE_VERYHIGH, nil;
+        end
+    end
+
+    -- Normal save: significant health loss in combat
+    if healthPercent < 0.35 and healthLoss > 0.3 and recentDamage then
+        if hasScepter then
+            return BOT_ACTION_DESIRE_HIGH, bot;
+        else
+            return BOT_ACTION_DESIRE_HIGH, nil;
+        end
+    end
+
+    -- ALLY SAVE: With Scepter, save low health allies
+    if hasScepter then
+        local allies = bot:GetNearbyHeroes(500, false, BOT_MODE_NONE);
+        for _, ally in pairs(allies) do
+            if ally ~= bot and not ally:IsIllusion() then
+                local allyHealthPercent = mutils.SafeGetHealthPercent(ally);
+                local allyRecentDamage = mutils.SafeWasRecentlyDamaged(ally, 2.0);
+                
+                -- Save ally from death
+                if allyHealthPercent < 0.20 and allyRecentDamage then
+                    return BOT_ACTION_DESIRE_VERYHIGH, ally;
+                end
+                
+                -- Save retreating ally who took big damage
+                if mutils.IsRetreating(ally) and allyHealthPercent < 0.35 and allyRecentDamage then
+                    return BOT_ACTION_DESIRE_HIGH, ally;
+                end
+            end
+        end
+    end
+
+    return BOT_ACTION_DESIRE_NONE, nil;
 end
-

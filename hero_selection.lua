@@ -67,7 +67,6 @@ local UnImplementedHeroes = {
 	'npc_dota_hero_dark_willow',
 	'npc_dota_hero_dazzle',
 	'npc_dota_hero_furion',
-	'npc_dota_hero_hoodwink',
 	'npc_dota_hero_lone_druid',
 	'npc_dota_hero_marci',
 	'npc_dota_hero_medusa',
@@ -87,7 +86,7 @@ local banList={
 }
 
 local radiantHeroList = {
-    
+    'npc_dota_hero_weaver'
 }
 
 local direHeroList = {
@@ -143,6 +142,7 @@ local allBotHeroes = {
 	'npc_dota_hero_faceless_void',
 	'npc_dota_hero_grimstroke',
 	'npc_dota_hero_gyrocopter',
+	'npc_dota_hero_hoodwink',
 	'npc_dota_hero_huskar',
 	'npc_dota_hero_invoker',
 	'npc_dota_hero_jakiro',
