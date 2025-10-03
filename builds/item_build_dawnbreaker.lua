@@ -11,12 +11,13 @@ X["items"] = {
 	"item_echo_sabre",
 	"item_lifesteal",
 	"item_aghanims_shard",
-	"item_heavens_halberd",
+	"item_harpoon",
 	"item_black_king_bar",
-	"item_ultimate_scepter_2",
-	"item_heart",
+	"item_greater_crit",
 	"item_satanic",
+	"item_ultimate_scepter_2",
 	"item_sheepstick",
+	"item_moon_shard",
 };			
 
 X["builds"] = {

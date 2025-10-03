@@ -420,7 +420,7 @@ ItemModule["item_ultimate_scepter_2"] = { "item_ultimate_scepter"; "item_recipe_
 ---------- 7.28 NEW ITEMS ---------------
 ItemModule["item_falcon_blade"] = { "item_fluffy_hat"; "item_sobi_mask"; "item_blades_of_attack"; "item_recipe_falcon_blade" }
 ItemModule["item_orb_of_corrosion"] = { "item_blight_stone"; "item_orb_of_venom"; "item_fluffy_hat"; "item_recipe_orb_of_corrosion" }
-ItemModule["item_witch_blade"] = { "item_oblivion_staff"; "item_chainmail"; "item_recipe_witch_blade" }
+ItemModule["item_witch_blade"] = { "item_oblivion_staff"; "item_chainmail"; "item_orb_of_venom"; "item_recipe_witch_blade" }
 ItemModule["item_gungir"] = { "item_point_booster"; "item_rod_of_atos"; "item_recipe_gungir" }
 ItemModule["item_mage_slayer"] = { "item_cloak"; "item_oblivion_staff"; "item_recipe_mage_slayer" }
 ItemModule["item_eternal_shroud"] = { "item_cloak"; "item_ogre_axe"; "item_vitality_booster";"item_recipe_eternal_shroud" }

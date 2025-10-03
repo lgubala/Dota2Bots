@@ -5,16 +5,15 @@ local npcBot = GetBot();
 local talents = IBUtil.FillTalenTable(npcBot);
 local skills  = IBUtil.FillSkillTable(npcBot, IBUtil.GetSlotPattern(1));
 
-X["items"] = { 
+X["items"] = {
 	"item_magic_wand",
 	"item_power_treads_agi",
 	"item_hurricane_pike",
 	"item_desolator",
 	"item_aghanims_shard",
 	"item_black_king_bar",
-	"item_greater_crit",	
+	"item_greater_crit",
 	"item_swift_blink",
-	"item_ultimate_scepter_2",
 };			
 
 X["builds"] = {

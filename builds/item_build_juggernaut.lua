@@ -10,6 +10,7 @@ X["items"] = {
 	"item_boots",
 	"item_maelstrom",
 	"item_ultimate_scepter",
+	"item_aghanims_shard",
 	"item_lesser_crit",
 	"item_mjollnir",
 	"item_greater_crit",
@@ -18,7 +19,6 @@ X["items"] = {
 	"item_ultimate_scepter_2",
 	"item_moon_shard",
 	"item_skadi",
-	"item_aghanims_shard",
 };			
 
 X["builds"] = {
