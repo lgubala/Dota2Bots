@@ -84,14 +84,18 @@ end
 function UpdateSiphonTracking()
     if abilityE == nil or not abilityE:IsTrained() then return end
     
-    -- Get current charges
-    siphonCharges = abilityE:GetCurrentCharges();
+    -- Spirit Siphon doesn't have charges - remove this line entirely
+    -- The ability is charge-based but GetCurrentCharges() only works on items
     
-    -- Clean up siphoned enemies list (remove those without the debuff)
+    -- Clean up siphoned enemies list (remove those without the debuff or dead/invalid)
     local newSiphonedEnemies = {};
     for _, enemy in pairs(siphonedEnemies) do
-        if enemy ~= nil and enemy:IsAlive() and enemy:HasModifier("modifier_death_prophet_spirit_siphon_slow") then
-            table.insert(newSiphonedEnemies, enemy);
+        -- Check if enemy is valid before calling methods on it
+        if enemy ~= nil and not enemy:IsNull() then
+            local success, isAlive = pcall(function() return enemy:IsAlive() end)
+            if success and isAlive and enemy:HasModifier("modifier_death_prophet_spirit_siphon_slow") then
+                table.insert(newSiphonedEnemies, enemy);
+            end
         end
     end
     siphonedEnemies = newSiphonedEnemies;
@@ -227,7 +231,7 @@ function ConsiderSilence()
 end
 
 function ConsiderSpiritSiphon()
-    if not mutils.CanBeCast(abilityE) or siphonCharges == 0 then
+    if not mutils.CanBeCast(abilityE) then
         return BOT_ACTION_DESIRE_NONE, nil;
     end
 
@@ -236,7 +240,9 @@ function ConsiderSpiritSiphon()
     
     -- Helper function to check if enemy is already siphoned
     local function IsAlreadySiphoned(enemy)
-        return enemy:HasModifier("modifier_death_prophet_spirit_siphon_slow");
+        if enemy == nil or enemy:IsNull() then return true end
+        local success, hasMod = pcall(function() return enemy:HasModifier("modifier_death_prophet_spirit_siphon_slow") end)
+        return success and hasMod or false
     end
 
     -- DEFENSIVE: Use when low HP for healing
@@ -254,7 +260,6 @@ function ConsiderSpiritSiphon()
 
     -- TEAMFIGHT: Use on multiple enemies
     if mutils.IsInTeamFight(bot, 1200) then
-        -- Find enemy without siphon
         for _, enemy in pairs(enemies) do
             if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
                 if not IsAlreadySiphoned(enemy) then
@@ -287,7 +292,7 @@ function ConsiderSpiritSiphon()
     end
 
     -- HARASSMENT: Use on any enemy hero without siphon
-    if healthPercent < 0.95 then -- Only if we can benefit from healing
+    if healthPercent < 0.95 then
         for _, enemy in pairs(enemies) do
             if mutils.IsValidTarget(enemy) and mutils.CanCastOnNonMagicImmune(enemy) then
                 if not IsAlreadySiphoned(enemy) then

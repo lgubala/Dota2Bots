@@ -86,17 +86,11 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_puck',
-    'npc_dota_hero_templar_assassin',
-    'npc_dota_hero_disruptor',
-    'npc_dota_hero_tidehunter'
+    'npc_dota_hero_death_prophet'
 }
 
 local direHeroList = {
-    'npc_dota_hero_weaver',
-    'npc_dota_hero_obsidian_destroyer',
-    'npc_dota_hero_abyssal_underlord',
-    'npc_dota_hero_wisp'
+    
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------
