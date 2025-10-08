@@ -86,7 +86,7 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_death_prophet'
+    
 }
 
 local direHeroList = {
@@ -104,7 +104,7 @@ end
 -- it also eliminates the delay between bot picks
 local quickMode = true;
 local testMode = false;
-local special_mode = true;
+local special_mode = false;
 
 local allBotHeroes = {
 	'npc_dota_hero_abaddon',

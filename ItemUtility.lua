@@ -197,7 +197,8 @@ ItemModule["basic_items"] = {
 	"item_disperser",
 	"item_angels_demise",
 	"item_phylactery",
-	"item_orb_of_frost"
+	"item_orb_of_frost",
+	"item_ward_dispenser"
 }
 
 ItemModule["item_angels_demise"] = { "item_phylactery"; "item_tiara_of_selemene"; "item_recipe_angels_demise"; }

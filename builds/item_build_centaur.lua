@@ -9,6 +9,7 @@ X["items"] = {
 	"item_phase_boots",
 	"item_vanguard",
 	"item_blink",
+	"item_black_king_bar",
 	"item_aghanims_shard",
 	"item_crimson_guard",
 	"item_pipe",

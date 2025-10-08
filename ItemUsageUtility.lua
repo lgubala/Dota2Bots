@@ -1754,7 +1754,226 @@ ItemUsageModule.Use['item_harpoon'] = function(item, bot, mode, extra_range)
 	return BOT_ACTION_DESIRE_NONE;
 end
 
---item_ward_dispenser
+
+--item_ward_sentry
+--item_ward_sentry
+ItemUsageModule.Use['item_ward_sentry'] = function(item, bot, mode, extra_range)
+	local nCastRange = 500 + extra_range;
+	local nTrueSightRange = 1050; -- Sentry detection radius
+	local nSentryLifetime = 420; -- 7 minutes
+	local myTeam = GetTeam();
+	
+	-- TEAM-SPECIFIC ward tracking (separate for Radiant and Dire)
+	if _G.TeamSentryWards == nil then
+		_G.TeamSentryWards = {
+			[TEAM_RADIANT] = {},
+			[TEAM_DIRE] = {}
+		};
+	end
+	
+	-- Helper function to calculate distance between two locations
+	local function GetDistanceBetweenLocations(loc1, loc2)
+		local dx = loc1.x - loc2.x;
+		local dy = loc1.y - loc2.y;
+		return math.sqrt(dx * dx + dy * dy);
+	end
+	
+	-- Helper function to check if we're in combat with invisible enemies
+	local function IsInCombatWithInvisEnemy()
+		local enemies = bot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
+		for _, enemy in pairs(enemies) do
+			if mutil.IsValidTarget(enemy) then
+				-- Check if enemy can go invisible or is invisible
+				if ItemUsageModule.IsUnitWillGoInvisible(enemy) or not enemy:CanBeSeen() then
+					return true;
+				end
+			end
+		end
+		return false;
+	end
+	
+	-- Helper function to check if location has ANY tower vision
+	local function IsInTowerVision(location)
+		-- Check friendly towers
+		local friendlyTowers = bot:GetNearbyTowers(1800, false);
+		for _, tower in pairs(friendlyTowers) do
+			if tower:IsAlive() and GetUnitToLocationDistance(tower, location) < 1600 then
+				return true;
+			end
+		end
+		
+		-- Check enemy towers (don't place in enemy tower range unless fighting invis)
+		local enemyTowers = bot:GetNearbyTowers(1800, true);
+		for _, tower in pairs(enemyTowers) do
+			if tower:IsAlive() and GetUnitToLocationDistance(tower, location) < 1600 then
+				-- EXCEPTION: Allow if we're fighting invisible enemies
+				if IsInCombatWithInvisEnemy() then
+					return false; -- Allow placement
+				end
+				return true; -- Block placement
+			end
+		end
+		
+		return false;
+	end
+	
+	-- Helper function to check if location already has sentry coverage (TEAM-SPECIFIC)
+	local function HasSentryCoverage(location)
+		local teamWards = _G.TeamSentryWards[myTeam];
+		
+		-- Clean up expired wards first
+		local currentTime = DotaTime();
+		for i = #teamWards, 1, -1 do
+			if (currentTime - teamWards[i].time) > nSentryLifetime then
+				table.remove(teamWards, i);
+			end
+		end
+		
+		-- Check if any existing ward covers this location
+		for _, ward in pairs(teamWards) do
+			local dist = GetDistanceBetweenLocations(location, ward.location);
+			if dist < nTrueSightRange * 2.0 then -- 2x range to prevent overlap
+				return true;
+			end
+		end
+		
+		return false;
+	end
+	
+	-- Helper function to check if location is in trees (good hiding spot)
+	local function IsInTrees(location)
+		local trees = bot:GetNearbyTrees(150);
+		return #trees >= 3; -- At least 3 trees nearby means we're in/near trees
+	end
+	
+	-- Helper function to find good placement location near target
+	local function FindGoodPlacement(targetLoc, preferTrees)
+		-- Try to find location in trees first if requested
+		if preferTrees then
+			for i = 1, 16 do -- Increased search attempts
+				local angle = (i * 22.5) * (math.pi / 180);
+				local testDist = 200 + (i * 80); -- Increased search distance
+				local offset = Vector(math.cos(angle) * testDist, math.sin(angle) * testDist);
+				local testLoc = targetLoc + offset;
+				if IsLocationPassable(testLoc) 
+					and not IsInTowerVision(testLoc) 
+					and not HasSentryCoverage(testLoc)
+					and IsInTrees(testLoc) then
+					return testLoc;
+				end
+			end
+		end
+		
+		-- Fallback: try any valid location (wider search)
+		for i = 1, 16 do
+			local angle = (i * 22.5) * (math.pi / 180);
+			local testDist = 300 + (i * 100);
+			local offset = Vector(math.cos(angle) * testDist, math.sin(angle) * testDist);
+			local testLoc = targetLoc + offset;
+			if IsLocationPassable(testLoc) 
+				and not IsInTowerVision(testLoc) 
+				and not HasSentryCoverage(testLoc) then
+				return testLoc;
+			end
+		end
+		
+		return nil;
+	end
+	
+	-- Helper function to register a ward placement (TEAM-SPECIFIC)
+	local function RegisterWardPlacement(location)
+		table.insert(_G.TeamSentryWards[myTeam], {location = location, time = DotaTime()});
+	end
+	
+	-- Helper to check if recent ward was placed
+	local function WasRecentWardPlaced(timeLimit)
+
+		return false;
+	end
+	
+	-- 5. Enemy went invisible (HIGHEST PRIORITY)
+	local enemyPids = GetTeamPlayers(GetOpposingTeam());
+	for i = 1, #enemyPids do
+		local info = GetHeroLastSeenInfo(enemyPids[i]);
+		if info ~= nil then
+			local dInfo = info[1];
+			if dInfo ~= nil 
+				and dInfo.time_since_seen > 0.5 
+				and dInfo.time_since_seen < 3.0 
+				and GetUnitToLocationDistance(bot, dInfo.location) < 1200 
+			then
+				local placeLoc = FindGoodPlacement(dInfo.location, false);
+				if placeLoc ~= nil then
+					RegisterWardPlacement(placeLoc);
+					return BOT_ACTION_DESIRE_ABSOLUTE, placeLoc, 'point';
+				end
+			end
+		end
+	end
+	
+	-- 1. Team fight (place in middle of fight)
+	if mutil.IsInTeamFight(bot, 1300) then
+		local enemies = bot:GetNearbyHeroes(1200, true, BOT_MODE_NONE);
+		if #enemies >= 2 and not WasRecentWardPlaced(60) then -- Don't spam in fights
+			local centerLoc = bot:GetLocation();
+			local placeLoc = FindGoodPlacement(centerLoc, false);
+			if placeLoc ~= nil then
+				RegisterWardPlacement(placeLoc);
+				return BOT_ACTION_DESIRE_ABSOLUTE, placeLoc, 'point';
+			end
+		end
+	end
+	
+	-- 4. Pushing (place ahead of push)
+	if mutil.IsPushing(bot) and not WasRecentWardPlaced(90) then
+		local lane = bot:GetAssignedLane();
+		local laneFrontLoc = GetLaneFrontLocation(myTeam, lane, 400); -- Further ahead
+		local placeLoc = FindGoodPlacement(laneFrontLoc, true);
+		if placeLoc ~= nil then
+			RegisterWardPlacement(placeLoc);
+			return BOT_ACTION_DESIRE_ABSOLUTE, placeLoc, 'point';
+		end
+	end
+	
+	-- Defending (place when defending)
+	if mutil.IsDefending(bot) and not WasRecentWardPlaced(90) then
+		local lane = bot:GetAssignedLane();
+		local laneFrontLoc = GetLaneFrontLocation(myTeam, lane, -400);
+		local placeLoc = FindGoodPlacement(laneFrontLoc, true);
+		if placeLoc ~= nil then
+			RegisterWardPlacement(placeLoc);
+			return BOT_ACTION_DESIRE_ABSOLUTE, placeLoc, 'point';
+		end
+	end
+	
+	-- 2. Laning phase (place on lane periodically)
+	if mode == BOT_MODE_LANING and DotaTime() > 30 and not WasRecentWardPlaced(120) then
+		local lane = bot:GetAssignedLane();
+		local laneLoc = GetLaneFrontLocation(myTeam, lane, -600);
+		local placeLoc = FindGoodPlacement(laneLoc, true);
+		if placeLoc ~= nil then
+			RegisterWardPlacement(placeLoc);
+			return BOT_ACTION_DESIRE_ABSOLUTE, placeLoc, 'point';
+		end
+	end
+	
+	-- 3. Roaming (place while moving)
+	if (mode == BOT_MODE_ROAM or mode == BOT_MODE_GANK) and DotaTime() > 0 and not WasRecentWardPlaced(150) then
+		local enemies = bot:GetNearbyHeroes(1600, true, BOT_MODE_NONE);
+		if #enemies == 0 then
+			local randomOffset = RandomVector(500);
+			local placeLoc = FindGoodPlacement(bot:GetLocation() + randomOffset, true);
+			if placeLoc ~= nil then
+				RegisterWardPlacement(placeLoc);
+				return BOT_ACTION_DESIRE_ABSOLUTE, placeLoc, 'point';
+			end
+		end
+	end
+	
+	return BOT_ACTION_DESIRE_NONE;
+end
+
+--item disperser
 ItemUsageModule.Use['item_disperser'] = function(item, bot, mode, extra_range)
 	
 	local nCastRange = 600 + extra_range;

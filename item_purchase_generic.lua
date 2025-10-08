@@ -388,11 +388,8 @@ function ItemPurchaseThink()
 	if buyBootsStatus == false and DotaTime() > lastBootsCheck + 2.0 then buyBootsStatus = items.UpdateBuyBootStatus(bot); lastBootsCheck = DotaTime() end
 	
 	--purchase flying courier and support item
+	--purchase flying courier and support item
 	if bot.theRole == 'support' then
-		-- if DotaTime() < 0 and GetItemStockCount( "item_courier" ) > 0
-		-- then
-			-- bot:ActionImmediate_PurchaseItem( 'item_courier' );
-		-- else
 		if DotaTime() < 0 and bot:GetGold() >= GetItemCost( "item_smoke_of_deceit" ) 
 			and GetItemStockCount( "item_smoke_of_deceit" ) > 1 and items.GetEmptyInventoryAmount(bot) >= 4 
 		then
@@ -404,15 +401,22 @@ function ItemPurchaseThink()
 			and items.GetEmptyInventoryAmount(bot) >= 4 and items.GetItemCharges(bot, "item_dust") < 1 and bot:GetCourierValue() == 0 
 		then
 			bot:ActionImmediate_PurchaseItem("item_dust"); 
-		elseif GetItemStockCount( "item_ward_observer" ) > 1 and ( DotaTime() < 0 or ( DotaTime() > 0 and buyBootsStatus == true ) ) 
-			and items.GetEmptyInventoryAmount(bot) >= 1 and items.GetItemCharges(bot, "item_ward_observer") < 2  and bot:GetCourierValue() == 0
+		-- FIXED: Only buy sentry if it's actually in stock AND we have space AND we don't already have 2
+		elseif GetItemStockCount( "item_ward_sentry" ) > 0  -- Changed from > 1 to > 0
+			and ( DotaTime() < 0 or ( DotaTime() > 0 and buyBootsStatus == true ) ) 
+			and bot:GetGold() >= GetItemCost( "item_ward_sentry" ) 
+			and items.GetEmptyInventoryAmount(bot) >= 1 
+			and items.GetItemCharges(bot, "item_ward_sentry") < 2  
+			and bot:GetCourierValue() == 0
 		then
-			--print("eAmount = "..tostring(items.GetEmptyInventoryAmount(bot)).. "My stuff " ..tostring(items.GetEmptyInventoryAmountForWards(bot)) .. "bot : " ..tostring(bot:GetUnitName()) )
-			--bot:ActionImmediate_PurchaseItem("item_ward_observer"); 
-		--elseif GetItemStockCount( "item_ward_sentry" ) > 1 and ( DotaTime() < 0 or ( DotaTime() > 0 and buyBootsStatus == true ) ) and bot:GetGold() >= GetItemCost( "item_ward_sentry" ) 
-			--and items.GetEmptyInventoryAmount(bot) >= 1 and items.GetItemCharges(bot, "item_ward_sentry") < 2  and bot:GetCourierValue() == 0
-		--then
-			--bot:ActionImmediate_PurchaseItem("item_ward_sentry"); 
+			-- CRITICAL: Only attempt purchase if stock is available
+			local purchaseResult = bot:ActionImmediate_PurchaseItem("item_ward_sentry");
+			if purchaseResult == PURCHASE_ITEM_SUCCESS then
+				-- Success! Ward purchased
+			elseif purchaseResult == PURCHASE_ITEM_OUT_OF_STOCK then
+				-- Out of stock - DO NOT block the queue, just continue with normal items
+				-- The bot will try again next think cycle when stock replenishes
+			end
 		end
 	end
 	

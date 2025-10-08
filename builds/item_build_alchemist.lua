@@ -11,6 +11,7 @@ X["items"] = {
 	"item_sange",
 	"item_lifesteal",
 	"item_radiance",
+	"item_black_king_bar",
 	"item_assault",
 	"item_heart",
 	"item_abyssal_blade",
