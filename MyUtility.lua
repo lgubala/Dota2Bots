@@ -1401,7 +1401,8 @@ function U.IsHitBasedThreat(unitName)
 		"npc_dota_gyrocopter_homing_missile",
 		"npc_dota_juggernaut_healing_ward",
 		"npc_dota_grimstroke_ink_creature",
-		"npc_dota_weaver_swarm"
+		"npc_dota_weaver_swarm",
+		"npc_dota_sentry_wards"
     }
     
     for _, threat in pairs(hitBasedThreats) do
