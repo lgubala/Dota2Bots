@@ -228,7 +228,12 @@ function GetDesire()
 		if cAbility == nil then cAbility = bot:GetAbilityByName( "enigma_black_hole" ) end;
 		if cAbility:IsInAbilityPhase() or bot:IsChanneling() then
 			return BOT_MODE_DESIRE_ABSOLUTE;
-		end		
+		end
+	elseif bot:GetUnitName() == "npc_dota_hero_templar_assassin" then
+		if cAbility == nil then cAbility = bot:GetAbilityByName( "templar_assassin_trap_teleport" ) end;
+		if cAbility:IsInAbilityPhase() or bot:IsChanneling() then
+			return BOT_MODE_DESIRE_ABSOLUTE;
+		end				
 	elseif bot:GetUnitName() == "npc_dota_hero_drow_ranger" then
 		if cAbility == nil then cAbility = bot:GetAbilityByName( "drow_ranger_multishot" ) end;
 		if cAbility:IsInAbilityPhase() or bot:IsChanneling() then
