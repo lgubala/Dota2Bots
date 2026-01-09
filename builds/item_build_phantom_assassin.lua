@@ -10,6 +10,7 @@ X["items"] = {
 	"item_magic_wand",
 	"item_power_treads_agi",
 	"item_bfury",
+	"item_aghanims_shard",
 	"item_basher",
 	"item_black_king_bar",
 	"item_abyssal_blade",

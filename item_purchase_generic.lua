@@ -541,6 +541,8 @@ function ItemPurchaseThink()
 	if  bot.currentItemToBuy == nil and #bot.currListItemToBuy == 0 then
 		bot.currentItemToBuy = bot.itemToBuy[#bot.itemToBuy];
 		local tempTable = items.GetBasicItems({items.NormItemName(bot.currentItemToBuy)})
+		--local tempTable = items.GetBasicItems(items.NormItemName(bot.currentItemToBuy))
+
 		for i=1,math.ceil(#tempTable/2) 
 		do	
 			bot.currListItemToBuy[i] = tempTable[#tempTable-i+1];

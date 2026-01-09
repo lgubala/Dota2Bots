@@ -281,7 +281,7 @@ ItemModule["item_force_staff"] = { "item_staff_of_wizardry"; "item_fluffy_hat"; 
 
 ItemModule["item_glimmer_cape"] = { "item_cloak"; "item_shadow_amulet"; "item_recipe_glimmer_cape" }
 
-ItemModule["item_guardian_greaves"] = { "item_arcane_boots"; "item_mekansm"; "item_buckler"; "item_recipe_guardian_greaves" }
+ItemModule["item_guardian_greaves"] = { "item_arcane_boots"; "item_mekansm"; "item_recipe_guardian_greaves" }
 
 ItemModule["item_hand_of_midas"] = { "item_gloves"; "item_recipe_hand_of_midas" }
 

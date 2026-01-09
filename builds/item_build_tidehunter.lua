@@ -16,6 +16,7 @@ X["items"] = {
 	"item_shivas_guard",
 	"item_mekansm",
 	"item_guardian_greaves",
+	"item_moon_shard",
 	"item_refresher",
 	"item_ultimate_scepter_2",
 	"item_arcane_blink",

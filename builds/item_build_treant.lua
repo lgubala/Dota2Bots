@@ -9,15 +9,17 @@ X["items"] = {
 	"item_magic_wand",
 	"item_arcane_boots",
 	"item_mekansm",
-	"item_ultimate_scepter",
-	"item_blink",
+	"item_aghanims_shard",
 	"item_guardian_greaves",
+	"item_blink",
+	"item_ultimate_scepter",
 	"item_lotus_orb",
 	"item_overwhelming_blink",
 	"item_refresher",
 	"item_sheepstick",
 	"item_heart",
 	"item_octarine_core",
+	"item_ultimate_scepter_2",
 };			
 
 X["builds"] = {

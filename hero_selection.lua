@@ -86,11 +86,17 @@ local banList={
 }
 
 local radiantHeroList = {
-    'npc_dota_hero_templar_assassin',
+    'npc_dota_hero_tusk',
+    'npc_dota_hero_disruptor',
+    'npc_dota_hero_kunkka',
+    'npc_dota_hero_dark_seer'
 }
 
 local direHeroList = {
-    
+    'npc_dota_hero_abyssal_underlord',
+    'npc_dota_hero_silencer',
+    'npc_dota_hero_elder_titan',
+    'npc_dota_hero_clinkz'
 }
 
 ----------------------------------------------------------GIVE THE BOT A PRO PLAYER NAME---------------------------------------------------------------------------------------------
@@ -104,7 +110,7 @@ end
 -- it also eliminates the delay between bot picks
 local quickMode = true;
 local testMode = false;
-local special_mode = true;
+local special_mode = false;
 
 local allBotHeroes = {
 	'npc_dota_hero_abaddon',
